@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<!-- saved from url=(0084)https://mor-deploy.vercelapp.stripe.dev/#tab=direct&risk=stripe&fees=ca&revshare=yes -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connect Charge Types: Who Owns What</title>
+<style>
+:root {
+  --blurple: #635BFF;
+  --slate: #0A2540;
+  --dark-gray: #425466;
+  --light-gray: #F6F9FC;
+  --white: #FFFFFF;
+  --slate-200: #E3E8EE;
+  --slate-300: #C1C9D2;
+  --slate-500: #8898AA;
+  --card-shadow: 0 4px 14px rgba(10,37,64,0.08);
+  --radius-panel: 12px;
+  --radius-row: 8px;
+  --platform-color: #FF6118;
+  --ca-color: #00A1C2;
+  --hybrid-color: #E8356D;
+  --stripe-color: #635BFF;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--light-gray);
+  color: var(--slate);
+  padding: 24px;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+/* Tabs - vertical in sidebar */
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  background: var(--light-gray);
+  border-radius: var(--radius-row);
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+}
+
+.tab:hover { background: rgba(0,0,0,0.03); }
+
+.tab.active {
+  color: var(--white);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+
+.tab.active[data-mor="platform"] { background: var(--platform-color); }
+.tab.active[data-mor="ca"] { background: var(--ca-color); }
+.tab.active[data-mor="hybrid"] { background: var(--hybrid-color); }
+
+.tab-icon { font-size: 20px; line-height: 1; }
+.tab-label { font-size: 11px; font-weight: 700; white-space: nowrap; }
+.tab-subtitle { display: none; }
+
+.tab:not(.active) .tab-icon,
+.tab:not(.active) .tab-label { color: var(--slate); }
+
+/* Main layout */
+.main-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* Toggles - left sidebar */
+.toggles-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px;
+  background: var(--white);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--card-shadow);
+  min-width: 140px;
+  position: sticky;
+  top: 24px;
+}
+
+.toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toggle-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.toggle-pills {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  padding: 3px;
+  background: var(--slate-200);
+  border-radius: 20px;
+  position: relative;
+}
+
+.toggle-pill {
+  padding: 6px 12px;
+  border-radius: 18px;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  color: var(--dark-gray);
+  text-align: center;
+  flex: 1;
+  z-index: 1;
+}
+
+.toggle-pill.active {
+  background: var(--white);
+  color: var(--slate);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+
+.toggle-pill.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.table-area {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Swimlane table */
+.swimlane {
+  background: var(--white);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.swimlane-header {
+  display: grid;
+  grid-template-columns: 380px 1fr 1fr 1fr;
+  border-bottom: 2px solid var(--slate-200);
+}
+
+.swimlane-header-cell {
+  padding: 14px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--slate-500);
+  text-align: center;
+}
+
+.expand-all-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--blurple);
+  text-decoration: none;
+  text-transform: none;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.expand-all-link:hover { text-decoration: underline; }
+
+/* Settings cog */
+.settings-cog {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--slate-300);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  z-index: 2;
+}
+.settings-cog:hover { color: var(--slate-500); background: var(--light-gray); }
+.settings-cog svg { width: 16px; height: 16px; }
+
+/* Settings modal */
+.settings-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,37,64,0.3);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.settings-overlay.visible { display: flex; }
+.settings-modal {
+  background: var(--white);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 8px 32px rgba(10,37,64,0.16);
+  padding: 24px;
+  width: 340px;
+  max-width: 90vw;
+}
+.settings-modal h3 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--slate);
+}
+.settings-field {
+  margin-bottom: 12px;
+}
+.settings-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-500);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.settings-field input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--slate);
+  transition: border-color 0.2s;
+}
+.settings-field input:focus { outline: none; border-color: var(--blurple); }
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+.settings-actions button {
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+}
+.settings-btn-reset {
+  background: var(--light-gray);
+  color: var(--dark-gray);
+}
+.settings-btn-reset:hover { background: var(--slate-200); }
+.settings-btn-done {
+  background: var(--blurple);
+  color: var(--white);
+}
+.settings-btn-done:hover { background: #4b3de0; }
+
+/* Flow animation */
+.flow-animation {
+  position: relative;
+  margin-top: 8px;
+  margin-bottom: 20px;
+  background: var(--white);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--card-shadow);
+  padding: 24px 0;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+}
+
+.flow-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  row-gap: 16px;
+  width: 100%;
+}
+
+.flow-customer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-self: end;
+  padding-right: 20px;
+}
+
+.flow-entity-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dark-gray);
+  margin-top: 4px;
+}
+
+.flow-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 130px;
+  height: 95px;
+  border-radius: 10px;
+  border-width: 2.5px;
+  border-style: solid;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  justify-self: center;
+  transition: transform 0.3s, box-shadow 0.3s;
+  gap: 4px;
+}
+
+.flow-box .flow-balance {
+  font-size: 18px;
+  font-weight: 800;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.flow-box .flow-balance.visible {
+  opacity: 1;
+}
+
+.flow-box-ca { background: rgba(0,161,194,0.06); border-color: var(--ca-color); color: var(--ca-color); }
+.flow-box-platform { background: rgba(255,97,24,0.06); border-color: var(--platform-color); color: var(--platform-color); }
+.flow-box-stripe { background: rgba(99,91,255,0.06); border-color: var(--stripe-color); color: var(--stripe-color); }
+
+.flow-box-ca2 {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: center;
+}
+
+.flow-box.pulse {
+  transform: scale(1.04);
+  box-shadow: 0 0 12px rgba(99,91,255,0.25);
+}
+
+.flow-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Ledger */
+.ledger-container {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 220px;
+}
+
+.ledger-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+
+.ledger-toggle-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--slate-500);
+}
+
+.ledger-toggle-chevron {
+  font-size: 8px;
+  color: var(--slate-500);
+  transition: transform 0.2s ease;
+}
+
+.ledger-toggle.expanded .ledger-toggle-chevron {
+  transform: rotate(90deg);
+}
+
+.ledger-panel {
+  overflow: hidden;
+  max-height: 300px;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  opacity: 1;
+}
+
+.ledger-panel.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+.ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 6px;
+}
+
+.ledger-table th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--dark-gray);
+  font-size: 10px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.ledger-table th:nth-child(2),
+.ledger-table th:nth-child(3),
+.ledger-table td:nth-child(2),
+.ledger-table td:nth-child(3) {
+  text-align: right;
+  width: 50px;
+}
+
+.ledger-table td {
+  padding: 3px 6px;
+  color: var(--dark-gray);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-table tr.ledger-net td {
+  font-weight: 700;
+  border-top: 1px solid var(--slate-200);
+  padding-top: 4px;
+}
+
+.ledger-table tr { animation: ledgerFadeIn 0.3s ease; }
+
+.ledger-verify {
+  font-size: 10px;
+  color: var(--slate-500);
+  margin-top: 6px;
+}
+
+@keyframes ledgerFadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+.flow-collapse-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--light-gray);
+  border-radius: var(--radius-row);
+  margin-bottom: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.flow-collapse-bar:hover { background: rgba(0,0,0,0.03); }
+
+.flow-collapse-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--slate-500);
+}
+
+.flow-collapse-chevron {
+  font-size: 10px;
+  color: var(--slate-500);
+  transition: transform 0.2s ease;
+}
+
+.flow-collapse-bar.collapsed .flow-collapse-chevron {
+  transform: rotate(-90deg);
+}
+
+.flow-animation.collapsed {
+  display: none;
+}
+
+.flow-path {
+  fill: none;
+  stroke: var(--slate-300);
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+  opacity: 0.7;
+}
+
+.flow-path.active {
+  opacity: 1;
+  stroke-dasharray: none;
+}
+
+.flow-note {
+  transition: opacity 0.2s;
+}
+
+.flow-note rect {
+  rx: 4;
+  ry: 4;
+}
+
+
+.swimlane-header-cell.platform-col {
+  background: rgba(255, 97, 24, 0.03);
+  border-left: 1px solid var(--slate-200);
+  color: var(--platform-color);
+}
+
+.swimlane-header-cell.stripe-col {
+  background: rgba(99, 91, 255, 0.05);
+  border-left: 1px solid var(--slate-200);
+  color: var(--stripe-color);
+}
+
+.swimlane-header-cell.ca-col {
+  background: rgba(0, 161, 194, 0.03);
+  border-left: 1px solid var(--slate-200);
+  color: var(--ca-color);
+}
+
+.swimlane-row {
+  display: grid;
+  grid-template-columns: 380px 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--slate-200);
+  align-items: center;
+  min-height: 52px;
+}
+
+.swimlane-row:last-child { border-bottom: none; }
+
+.swimlane-row.section-divider {
+  border-top: 2px solid var(--slate-200);
+}
+
+.section-heading {
+  display: grid;
+  grid-template-columns: 380px 1fr 1fr 1fr;
+  border-bottom: 1px solid var(--slate-200);
+  border-top: 1px solid var(--slate-200);
+  background: var(--light-gray);
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-heading:hover { background: rgba(0,0,0,0.03); }
+
+.section-heading-label {
+  grid-column: 1 / 5;
+  padding: 6px 16px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--slate-500);
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 8px;
+  margin-right: 4px;
+  transition: transform 0.2s ease;
+}
+
+.section-heading:not(.collapsed) .chevron { transform: rotate(90deg); }
+
+.section-summary {
+  display: grid;
+  grid-template-columns: 380px 1fr 1fr 1fr;
+  align-items: center;
+  min-height: 40px;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.section-summary .swimlane-track { position: relative; height: 100%; display: flex; align-items: center; border-left: 1px solid var(--slate-200); }
+
+.summary-pill {
+  position: absolute;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.summary-pill .indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.summary-pill[data-col="ca"] { background: rgba(0, 161, 194, 0.08); color: var(--ca-color); }
+.summary-pill[data-col="ca"] .indicator-dot { background: var(--ca-color); }
+.summary-pill[data-col="platform"] { background: rgba(255, 97, 24, 0.08); color: var(--platform-color); }
+.summary-pill[data-col="platform"] .indicator-dot { background: var(--platform-color); }
+.summary-pill[data-col="stripe"] { background: rgba(99, 91, 255, 0.12); color: var(--stripe-color); }
+.summary-pill[data-col="stripe"] .indicator-dot { background: var(--stripe-color); }
+
+.swimlane-label {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dark-gray);
+}
+
+/* Track spans all three columns */
+.swimlane-track {
+  grid-column: 2 / 5;
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  border-left: 1px solid var(--slate-200);
+}
+
+.swimlane-track::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 33.333%;
+  height: 100%;
+  background: rgba(0, 161, 194, 0.015);
+}
+
+.swimlane-track .stripe-bg {
+  position: absolute;
+  top: 0; left: 33.333%;
+  width: 33.333%;
+  height: 100%;
+  background: rgba(255, 97, 24, 0.015);
+  border-left: 1px solid var(--slate-200);
+}
+
+.swimlane-track::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 66.666%;
+  width: 33.334%;
+  height: 100%;
+  background: rgba(99, 91, 255, 0.035);
+  border-left: 1px solid var(--slate-200);
+}
+
+/* Pill indicator */
+.indicator {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease, color 0.3s ease;
+  margin-left: 16px;
+}
+
+.indicator.platform { background: rgba(255, 97, 24, 0.08); color: var(--platform-color); }
+.indicator.stripe { background: rgba(99, 91, 255, 0.12); color: var(--stripe-color); }
+.indicator.ca { background: rgba(0, 161, 194, 0.08); color: var(--ca-color); }
+.indicator.hybrid { background: rgba(232, 53, 109, 0.08); color: var(--hybrid-color); }
+.indicator.hidden { opacity: 0; pointer-events: none; }
+.indicator.visible { opacity: 1; }
+.indicator[data-key="revshare"] { position: absolute; top: 50%; transform-origin: left center; margin-top: -14px; }
+
+.indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.3s ease;
+}
+
+.indicator.platform .indicator-dot { background: var(--platform-color); }
+.indicator.stripe .indicator-dot { background: var(--stripe-color); }
+.indicator.ca .indicator-dot { background: var(--ca-color); }
+.indicator.hybrid .indicator-dot { background: var(--hybrid-color); }
+
+/* Explanation boxes */
+.explanation-box {
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-left: 4px solid var(--slate-300);
+  border-radius: 0 var(--radius-row) var(--radius-row) 0;
+  font-size: 13px;
+  color: var(--dark-gray);
+  max-height: 200px;
+  transition: opacity 0.3s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+}
+
+.explanation-box strong { color: var(--slate); }
+.explanation-box a { color: var(--blurple); text-decoration: none; }
+.explanation-box a:hover { text-decoration: underline; }
+
+.explanation-box.hidden {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  padding: 0 20px;
+  border-width: 0;
+  box-shadow: none;
+}
+
+/* Note callout */
+.note {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(255, 192, 31, 0.06);
+  border-left: 3px solid #FFC01F;
+  border-radius: 0 var(--radius-row) var(--radius-row) 0;
+  font-size: 12px;
+  color: var(--dark-gray);
+  max-height: 200px;
+  transition: opacity 0.3s ease, max-height 0.4s ease, margin 0.4s ease, padding 0.4s ease;
+  overflow: hidden;
+}
+
+.note strong { color: var(--slate); }
+.note.hidden {
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  padding: 0 16px;
+  border-left-color: transparent;
+}
+
+@media (max-width: 768px) {
+  .main-layout { flex-direction: column; }
+  .toggles-container { flex-direction: row; min-width: unset; position: static; }
+  .toggle-pills { flex-direction: row; }
+  .tabs-container { border-radius: var(--radius-panel); gap: 4px; padding: 4px; }
+  .tab { border-radius: var(--radius-row); padding: 10px 12px; min-width: 110px; }
+  .swimlane-header, .swimlane-row { grid-template-columns: 140px 1fr 1fr 1fr; }
+  .swimlane-label { font-size: 11px; padding: 8px 10px; }
+  .indicator { font-size: 10px; padding: 4px 10px; margin-left: 8px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Connect Charge Types: Who Owns What</h1>
+
+  <!-- Main layout: sidebar left + table right -->
+  <div class="main-layout">
+
+  <!-- Sidebar: tabs + toggles -->
+  <div class="toggles-container">
+    <div class="toggle-group">
+      <span class="toggle-label">Charge type</span>
+      <div class="tabs-container" role="tablist">
+        <button class="tab active" data-tab="direct" data-mor="ca" role="tab" aria-selected="true">
+          <span class="tab-icon">→</span>
+          <span class="tab-label">Direct</span>
+        </button>
+        <button class="tab" data-tab="destination" data-mor="platform" role="tab" aria-selected="false">
+          <span class="tab-icon">⇢</span>
+          <span class="tab-label">Destination</span>
+        </button>
+        <button class="tab" data-tab="destination-obo" data-mor="hybrid" role="tab" aria-selected="false">
+          <span class="tab-icon">⇢⁺</span>
+          <span class="tab-label">Dest + OBO</span>
+        </button>
+        <button class="tab" data-tab="sct" data-mor="platform" role="tab" aria-selected="false">
+          <span class="tab-icon">⟷</span>
+          <span class="tab-label">SCT</span>
+        </button>
+        <button class="tab" data-tab="sct-obo" data-mor="hybrid" role="tab" aria-selected="false">
+          <span class="tab-icon">⟷⁺</span>
+          <span class="tab-label">SCT + OBO</span>
+        </button>
+      </div>
+    </div>
+    <div class="toggle-group">
+      <span class="toggle-label">Risk</span>
+      <div class="toggle-pills">
+        <button class="toggle-pill active" data-toggle="risk" data-value="stripe">Stripe</button>
+        <button class="toggle-pill" data-toggle="risk" data-value="platform">Platform</button>
+      </div>
+    </div>
+    <div class="toggle-group">
+      <span class="toggle-label">Fees paid by</span>
+      <div class="toggle-pills">
+        <button class="toggle-pill active" data-toggle="pricing" data-value="stripe">Connected Account</button>
+        <button class="toggle-pill" data-toggle="pricing" data-value="platform">Platform</button>
+      </div>
+    </div>
+    <div class="toggle-group">
+      <span class="toggle-label">Rev share</span>
+      <div class="toggle-pills">
+        <button class="toggle-pill active" data-toggle="revshare" data-value="yes">Yes</button>
+        <button class="toggle-pill" data-toggle="revshare" data-value="no">No</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-area">
+
+  <!-- Fund Flow Animation -->
+  <div class="flow-collapse-bar" id="flow-collapse-bar">
+    <span class="flow-collapse-label">Fund Flow</span>
+    <span class="flow-collapse-chevron" id="flow-chevron">▼</span>
+  </div>
+  <div class="flow-animation" id="flow-animation">
+    <button class="settings-cog" id="settings-cog" title="Rename labels">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+    </button>
+    <div class="flow-grid">
+      <div class="flow-customer" id="entity-customer">
+        <svg width="48" height="56" viewBox="0 0 48 56">
+          <circle cx="24" cy="16" r="10" fill="var(--slate-300)" stroke="none"></circle>
+          <path d="M10 56 C10 38 14 32 24 32 C34 32 38 38 38 56 Z" fill="var(--slate-300)" stroke="none"></path>
+        </svg>
+        <span class="flow-entity-label">Customer</span>
+      </div>
+      <div class="flow-box flow-box-ca" id="entity-ca">
+        <span>Connected Account</span>
+        <span class="flow-balance visible" data-entity="ca">$95</span>
+      </div>
+      <div class="flow-box flow-box-platform" id="entity-platform">
+        <span>Platform</span>
+        <span class="flow-balance" data-entity="platform">$0</span>
+      </div>
+      <div class="flow-box flow-box-stripe" id="entity-stripe">
+        <span>Stripe</span>
+        <span class="flow-balance" data-entity="stripe">$0</span>
+      </div>
+      <div class="flow-box flow-box-ca flow-box-ca2" id="entity-ca2" style="display:none;">
+        <span>Connected Account 2</span>
+        <span class="flow-balance" data-entity="ca2">$0</span>
+      </div>
+    </div><!-- /flow-grid -->
+    <!-- Ledger -->
+    <div class="ledger-container">
+      <div class="ledger-toggle" id="ledger-toggle">
+        <span class="ledger-toggle-label">Ledger</span>
+        <span class="ledger-toggle-chevron">▶</span>
+      </div>
+      <div class="ledger-panel collapsed" id="ledger-panel">
+        <table class="ledger-table">
+          <thead>
+            <tr><th></th><th>CA</th><th>Platform</th></tr>
+          </thead>
+          <tbody id="ledger-body"><tr><td>Payment</td><td>+$100</td><td></td></tr></tbody>
+          <tfoot id="ledger-foot"><tr class="ledger-net"><td>Net</td><td>+$100</td><td></td></tr></tfoot>
+        </table>
+        <div class="ledger-verify" id="ledger-verify">$100 + $0 + $0 (Stripe) = $100</div>
+      </div>
+    </div>
+    <svg class="flow-svg-overlay" id="flow-svg" preserveAspectRatio="xMidYMid meet" width="1078" height="260" viewBox="0 0 1078 260">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="var(--slate-300)"></polygon>
+        </marker>
+      </defs>
+      <g id="flow-paths"><path d="M406.1079559326172,129.9999885559082 L431.3210144042969,129.99999237060547" class="flow-path" marker-end="url(#arrowhead)"></path><path d="M561.3210144042969,129.99999237060547 L663.9630432128906,129.99999237060547" class="flow-path" marker-end="url(#arrowhead)"></path><path d="M496.3210144042969,81.99999237060547 L496.3210144042969,43.99999237060547 Q496.3210144042969,31.99999237060547 508.3210144042969,31.99999237060547 L949.6050109863281,31.99999237060547 Q961.6050109863281,31.99999237060547 961.6050109863281,43.99999237060547 L961.6050109863281,81.99999237060547" class="flow-path" marker-end="url(#arrowhead)"></path><path d="M896.6050109863281,129.99999237060547 L793.9630432128906,129.99999237060547" class="flow-path" marker-end="url(#arrowhead)"></path></g>
+      <g id="flow-notes"><g class="flow-note" transform="translate(651.731201171875,130)"><rect x="-21" y="-13" width="42" height="26" rx="5" fill="rgba(0,161,194,0.12)" stroke="#00A1C2" stroke-width="1.5"></rect>
+    <text x="0" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#00A1C2">$5</text></g></g>
+    </svg>
+  </div>
+
+  <div class="swimlane">
+    <div class="swimlane-header">
+      <div class="swimlane-header-cell"><a href="https://mor-deploy.vercelapp.stripe.dev/#" class="expand-all-link" id="expand-all">Expand all</a></div>
+      <div class="swimlane-header-cell ca-col">Connected Account</div>
+      <div class="swimlane-header-cell platform-col">Platform</div>
+      <div class="swimlane-header-cell stripe-col">Stripe</div>
+    </div>
+
+    <!-- CUSTOMER-FACING -->
+    <div class="section-heading collapsed" data-section="customer-facing"><div class="section-heading-label"><span class="chevron">▶</span> Customer-facing</div></div>
+    <div class="section-summary" data-section-summary="customer-facing">
+      <div class="swimlane-label"></div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="summary-pill" data-col="ca" style="display: inline-flex; left: 98.3333px;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="platform" style="display: none;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="stripe" style="display: none;"><span class="indicator-dot"></span></span></div>
+    </div>
+    <div class="section-rows" data-section-rows="customer-facing" style="display:none;">
+    <div class="swimlane-row" data-row="descriptor" data-section="customer-facing">
+      <div class="swimlane-label">Text on buyer's bank statement</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="descriptor" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account's name</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="radar" data-section="customer-facing">
+      <div class="swimlane-label">Country used for Radar rules</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="radar" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account's country</span></span></div>
+    </div>
+    </div>
+
+    <!-- MONEY -->
+    <div class="section-heading collapsed" data-section="money"><div class="section-heading-label"><span class="chevron">▶</span> Money</div></div>
+    <div class="section-summary" data-section-summary="money">
+      <div class="swimlane-label"></div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="summary-pill" data-col="ca" style="display: inline-flex; left: 98.3333px;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="platform" style="display: none;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="stripe" style="display: inline-flex; left: 563.667px;"><span class="indicator-dot"></span></span></div>
+    </div>
+    <div class="section-rows" data-section-rows="money" style="display:none;">
+    <div class="swimlane-row" data-row="funds" data-section="money">
+      <div class="swimlane-label">Account that receives the payment first</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="funds" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="fee-rate" data-section="money">
+      <div class="swimlane-label">Country that determines fee rate</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="fee-rate" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account's country rate</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="stripe-fees" data-section="money">
+      <div class="swimlane-label">Who pays fees (processing, disputes, refunds, Radar)</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="stripe-fees" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account pays Stripe</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="revenue" data-section="money">
+      <div class="swimlane-label">Where platform revenue comes from</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="revenue" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">App fee deducted from payment</span></span><span class="indicator stripe" data-key="revshare" style="left: 481.333px;"><span class="indicator-dot"></span><span class="indicator-text">Stripe pays rev share</span></span></div>
+    </div>
+    </div>
+
+    <!-- LIABILITY & RISK -->
+    <div class="section-heading collapsed" data-section="liability"><div class="section-heading-label"><span class="chevron">▶</span> Liability &amp; Risk</div></div>
+    <div class="section-summary" data-section-summary="liability">
+      <div class="swimlane-label"></div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="summary-pill" data-col="ca" style="display: inline-flex; left: 98.3333px;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="platform" style="display: none;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="stripe" style="display: inline-flex; left: 563.667px;"><span class="indicator-dot"></span></span></div>
+    </div>
+    <div class="section-rows" data-section-rows="liability" style="display:none;">
+    <div class="swimlane-row" data-row="liability" data-section="liability">
+      <div class="swimlane-label">Who covers chargeback costs (bank fee + reversed payment)</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="liability" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="loss-liability" data-section="liability">
+      <div class="swimlane-label">Who absorbs unrecoverable merchant losses</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator stripe" data-key="loss-liability" style="transform: translateX(465.333px);"><span class="indicator-dot"></span><span class="indicator-text">Stripe bears losses</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="dispute-evidence" data-section="liability">
+      <div class="swimlane-label">Who submits evidence</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="dispute-evidence" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="refund" data-section="liability">
+      <div class="swimlane-label">Account that can refund over API</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="refund" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Connected Account</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="risk-screening" data-section="liability">
+      <div class="swimlane-label">Who can reject a risky merchant</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator stripe" data-key="risk-screening" style="transform: translateX(465.333px);"><span class="indicator-dot"></span><span class="indicator-text">Stripe screens merchants</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="interventions" data-section="liability">
+      <div class="swimlane-label">Who pauses/blocks</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator stripe" data-key="interventions" style="transform: translateX(465.333px);"><span class="indicator-dot"></span><span class="indicator-text">Stripe pauses/rejects</span></span></div>
+    </div>
+    </div>
+
+    <!-- DATA & OBJECTS -->
+    <div class="section-heading collapsed" data-section="data"><div class="section-heading-label"><span class="chevron">▶</span> Data &amp; Objects</div></div>
+    <div class="section-summary" data-section-summary="data">
+      <div class="swimlane-label"></div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="summary-pill" data-col="ca" style="display: inline-flex; left: 98.3333px;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="platform" style="display: none;"><span class="indicator-dot"></span></span><span class="summary-pill" data-col="stripe" style="display: none;"><span class="indicator-dot"></span></span></div>
+    </div>
+    <div class="section-rows" data-section-rows="data" style="display:none;">
+    <div class="swimlane-row" data-row="customers" data-section="data">
+      <div class="swimlane-label">Account Customer is stored on</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="customers" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Stored on Connected Account</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="payment-method" data-section="data">
+      <div class="swimlane-label">Account Payment methods are configured on</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="payment-method" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Customer on Connected Account</span></span></div>
+    </div>
+    <div class="swimlane-row" data-row="catalog" data-section="data">
+      <div class="swimlane-label">Account Products are stored on</div>
+      <div class="swimlane-track"><div class="stripe-bg"></div><span class="indicator ca" data-key="catalog" style="transform: translateX(0px);"><span class="indicator-dot"></span><span class="indicator-text">Stored on Connected Account</span></span></div>
+    </div>
+    </div>
+  </div>
+
+  </div><!-- /table-area -->
+
+  <!-- Settings Modal -->
+  <div class="settings-overlay" id="settings-overlay">
+    <div class="settings-modal">
+      <h3>Diagram Labels</h3>
+      <div class="settings-field">
+        <label>Customer</label>
+        <input type="text" id="label-customer" maxlength="30">
+      </div>
+      <div class="settings-field">
+        <label>Connected Account</label>
+        <input type="text" id="label-ca" maxlength="30">
+      </div>
+      <div class="settings-field">
+        <label>Platform</label>
+        <input type="text" id="label-platform" maxlength="30">
+      </div>
+      <div class="settings-field">
+        <label>Connected Account 2</label>
+        <input type="text" id="label-ca2" maxlength="30">
+      </div>
+      <div class="settings-actions">
+        <button class="settings-btn-reset" id="settings-reset">Reset</button>
+        <button class="settings-btn-done" id="settings-done">Done</button>
+      </div>
+    </div>
+  </div>
+  </div><!-- /main-layout -->
+
+  <!-- Explanation boxes -->
+  <div class="explanation-box hidden" id="explain-risk">
+    <strong>Why is Stripe-managed risk unavailable?</strong><br>
+    Stripe-managed risk is only available with direct charges. When the platform creates the charge (destination/SCT), the platform must own merchant risk and loss liability.<br>
+    <a href="https://docs.stripe.com/connect/risk-management">docs.stripe.com/connect/risk-management</a>
+  </div>
+  <div class="explanation-box hidden" id="explain-pricing">
+    <strong>Why can't the connected account pay fees directly?</strong><br>
+    With destination and SCT charges, the platform creates the charge on its own account. Stripe fees are deducted from the platform. The platform controls what it charges connected accounts separately.<br>
+    <a href="https://docs.stripe.com/connect/direct-charges">docs.stripe.com/connect/direct-charges</a>
+  </div>
+  <div class="explanation-box hidden" id="explain-revshare">
+    <strong>Why is revenue share unavailable?</strong><br>
+    Revenue share requires Standard Connect where the connected account pays Stripe fees directly. When the platform pays fees (buy-rate model), the platform earns margin by marking up what they charge connected accounts instead.<br>
+    <a href="https://trailhead.corp.stripe.com/docs/spe/program-elements/revenue-share">trailhead.corp.stripe.com/docs/spe/program-elements/revenue-share</a>
+  </div>
+
+  <!-- OBO/SCT notes -->
+  <div class="note hidden" id="note-obo">
+    <strong>on_behalf_of effect:</strong> Shifts the customer-facing identity (descriptor, Radar address) to the connected account.
+    Chargeback liability, refund control, fund flow, payment method ownership, and dispute evidence remain with the platform.
+  </div>
+  <div class="note hidden" id="note-sct">
+    <strong>SCT note:</strong> The transfer is manual and decoupled from the charge. No automatic reversal on refund.
+    The platform has full control over transfer timing and amount.
+  </div>
+  <div class="note hidden" id="note-sct-obo">
+    <strong>SCT + OBO:</strong> Same shifted attributes as Destination + OBO. The difference: the transfer remains manual,
+    decoupled from the charge, with no automatic reversal on refund.
+  </div>
+
+</div>
+
+<script>
+// Static rows: change only with charge type tab
+const STATIC = {
+  direct: {
+    descriptor:        { col: 'ca', style: 'ca', text: "Connected Account's name" },
+    liability:         { col: 'ca', style: 'ca', text: 'Connected Account' },
+    refund:            { col: 'ca', style: 'ca', text: 'Connected Account' },
+    funds:             { col: 'ca', style: 'ca', text: 'Connected Account' },
+    radar:             { col: 'ca', style: 'ca', text: "Connected Account's country" },
+    'payment-method':  { col: 'ca', style: 'ca', text: 'Customer on Connected Account' },
+    'dispute-evidence':{ col: 'ca', style: 'ca', text: 'Connected Account' },
+    customers:         { col: 'ca', style: 'ca', text: 'Stored on Connected Account' },
+    catalog:           { col: 'ca', style: 'ca', text: 'Stored on Connected Account' },
+    'fee-rate':        { col: 'ca', style: 'ca', text: "Connected Account's country rate" },
+    note: null
+  },
+  destination: {
+    descriptor:        { col: 'platform', style: 'platform', text: "Platform's name" },
+    liability:         { col: 'platform', style: 'platform', text: 'Platform' },
+    refund:            { col: 'platform', style: 'platform', text: 'Platform' },
+    funds:             { col: 'platform', style: 'platform', text: 'Platform' },
+    radar:             { col: 'platform', style: 'platform', text: "Platform's country" },
+    'payment-method':  { col: 'platform', style: 'platform', text: 'Customer on platform' },
+    'dispute-evidence':{ col: 'platform', style: 'platform', text: 'Platform' },
+    customers:         { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    catalog:           { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    'fee-rate':        { col: 'platform', style: 'platform', text: "Platform's country rate" },
+    note: null
+  },
+  'destination-obo': {
+    descriptor:        { col: 'ca', style: 'hybrid', text: "Connected Account's name" },
+    liability:         { col: 'platform', style: 'platform', text: 'Platform' },
+    refund:            { col: 'platform', style: 'platform', text: 'Platform' },
+    funds:             { col: 'platform', style: 'platform', text: 'Platform' },
+    radar:             { col: 'ca', style: 'hybrid', text: "Connected Account's country" },
+    'payment-method':  { col: 'platform', style: 'platform', text: 'Customer on platform' },
+    'dispute-evidence':{ col: 'platform', style: 'platform', text: 'Platform' },
+    customers:         { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    catalog:           { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    'fee-rate':        { col: 'ca', style: 'hybrid', text: "Connected Account's country rate" },
+    note: 'note-obo'
+  },
+  sct: {
+    descriptor:        { col: 'platform', style: 'platform', text: "Platform's name" },
+    liability:         { col: 'platform', style: 'platform', text: 'Platform' },
+    refund:            { col: 'platform', style: 'platform', text: 'Platform' },
+    funds:             { col: 'platform', style: 'platform', text: 'Platform' },
+    radar:             { col: 'platform', style: 'platform', text: "Platform's country" },
+    'payment-method':  { col: 'platform', style: 'platform', text: 'Customer on platform' },
+    'dispute-evidence':{ col: 'platform', style: 'platform', text: 'Platform' },
+    customers:         { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    catalog:           { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    'fee-rate':        { col: 'platform', style: 'platform', text: "Platform's country rate" },
+    note: 'note-sct'
+  },
+  'sct-obo': {
+    descriptor:        { col: 'ca', style: 'hybrid', text: "Connected Account's name" },
+    liability:         { col: 'platform', style: 'platform', text: 'Platform' },
+    refund:            { col: 'platform', style: 'platform', text: 'Platform' },
+    funds:             { col: 'platform', style: 'platform', text: 'Platform' },
+    radar:             { col: 'ca', style: 'hybrid', text: "Connected Account's country" },
+    'payment-method':  { col: 'platform', style: 'platform', text: 'Customer on platform' },
+    'dispute-evidence':{ col: 'platform', style: 'platform', text: 'Platform' },
+    customers:         { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    catalog:           { col: 'platform', style: 'platform', text: 'Stored on platform' },
+    'fee-rate':        { col: 'ca', style: 'hybrid', text: "Connected Account's country rate" },
+    note: 'note-sct-obo'
+  }
+};
+
+// Risk-dependent rows
+const RISK_ROWS = {
+  stripe: {
+    'loss-liability':  { col: 'stripe', style: 'stripe', text: 'Stripe bears losses' },
+    'risk-screening':  { col: 'stripe', style: 'stripe', text: 'Stripe screens merchants' },
+    interventions:     { col: 'stripe', style: 'stripe', text: 'Stripe pauses/rejects' },
+  },
+  platform: {
+    'loss-liability':  { col: 'platform', style: 'platform', text: 'Platform bears losses' },
+    'risk-screening':  { col: 'platform', style: 'platform', text: 'Platform screens merchants' },
+    interventions:     { col: 'platform', style: 'platform', text: 'Platform pauses/rejects' },
+  }
+};
+
+// Pricing-dependent row
+const PRICING_ROWS = {
+  stripe:   { 'stripe-fees': { col: 'ca', style: 'ca', text: 'Connected Account pays Stripe' } },
+  platform: { 'stripe-fees': { col: 'platform', style: 'platform', text: 'Platform pays Stripe' } }
+};
+
+// Revenue row: how platform earns (changes by charge type)
+const REVENUE_ROWS = {
+  direct:            { revenue: { col: 'ca', style: 'ca', text: 'App fee deducted from payment' } },
+  destination:       { revenue: { col: 'platform', style: 'platform', text: 'Platform withholds from transfer' } },
+  'destination-obo': { revenue: { col: 'platform', style: 'platform', text: 'Platform withholds from transfer' } },
+  sct:               { revenue: { col: 'platform', style: 'platform', text: 'Platform controls transfer amount' } },
+  'sct-obo':         { revenue: { col: 'platform', style: 'platform', text: 'Platform controls transfer amount' } }
+};
+
+// Rev share pill (Stripe-funded, toggle-dependent)
+const REVSHARE_DATA = { col: 'stripe', style: 'stripe', text: 'Stripe pays rev share' };
+
+// Toggle validity: which tabs allow Stripe toggles
+const VALIDITY = {
+  direct:            { risk: true, pricing: true, revshare: true },
+  destination:       { risk: false, pricing: false, revshare: false },
+  'destination-obo': { risk: false, pricing: false, revshare: false },
+  sct:               { risk: false, pricing: false, revshare: false },
+  'sct-obo':         { risk: false, pricing: false, revshare: false },
+};
+
+// State
+let currentTab = 'direct';
+let riskToggle = 'stripe';
+let pricingToggle = 'stripe';
+let revshareToggle = 'yes';
+
+function getColOffset(col) {
+  // Use the header row which is always visible
+  const header = document.querySelector('.swimlane-header');
+  if (!header) return 0;
+  const headerWidth = header.offsetWidth;
+  const firstCol = 380;
+  const trackWidth = headerWidth - firstCol;
+  const third = trackWidth / 3;
+  if (col === 'ca') return 0;
+  if (col === 'platform') return third;
+  if (col === 'stripe') return third * 2;
+  return 0;
+}
+
+function isRevshareAllowed() {
+  const validity = VALIDITY[currentTab];
+  return validity.revshare && pricingToggle === 'stripe';
+}
+
+function enforceToggleValidity() {
+  const validity = VALIDITY[currentTab];
+  if (!validity.risk && riskToggle === 'stripe') {
+    riskToggle = 'platform';
+    updateToggleUI('risk');
+  }
+  if (!validity.pricing && pricingToggle === 'stripe') {
+    pricingToggle = 'platform';
+    updateToggleUI('pricing');
+  }
+  if (!isRevshareAllowed() && revshareToggle === 'yes') {
+    revshareToggle = 'no';
+    updateToggleUI('revshare');
+  }
+}
+
+function renderAll() {
+  // Enforce valid toggle states BEFORE rendering anything
+  enforceToggleValidity();
+
+  const staticData = STATIC[currentTab];
+  const riskData = RISK_ROWS[riskToggle];
+  const pricingData = PRICING_ROWS[pricingToggle];
+
+  // Render static rows
+  Object.keys(staticData).forEach(key => {
+    if (key === 'note') return;
+    const pill = document.querySelector(`.indicator[data-key="${key}"]`);
+    if (!pill) return;
+    const entry = staticData[key];
+    pill.querySelector('.indicator-text').textContent = entry.text;
+    pill.className = `indicator ${entry.style}`;
+    pill.style.transform = `translateX(${getColOffset(entry.col)}px)`;
+  });
+
+  // Render risk rows
+  Object.keys(riskData).forEach(key => {
+    const pill = document.querySelector(`.indicator[data-key="${key}"]`);
+    if (!pill) return;
+    const entry = riskData[key];
+    pill.querySelector('.indicator-text').textContent = entry.text;
+    pill.className = `indicator ${entry.style}`;
+    pill.style.transform = `translateX(${getColOffset(entry.col)}px)`;
+  });
+
+  // Render pricing row
+  Object.keys(pricingData).forEach(key => {
+    const pill = document.querySelector(`.indicator[data-key="${key}"]`);
+    if (!pill) return;
+    const entry = pricingData[key];
+    pill.querySelector('.indicator-text').textContent = entry.text;
+    pill.className = `indicator ${entry.style}`;
+    pill.style.transform = `translateX(${getColOffset(entry.col)}px)`;
+  });
+
+  // Render revenue row (pill 1 — merchant-funded)
+  const revenueData = REVENUE_ROWS[currentTab];
+  const revenuePill = document.querySelector('.indicator[data-key="revenue"]');
+  if (revenuePill && revenueData) {
+    const entry = revenueData.revenue;
+    revenuePill.querySelector('.indicator-text').textContent = entry.text;
+    revenuePill.className = `indicator ${entry.style}`;
+    revenuePill.style.transform = `translateX(${getColOffset(entry.col)}px)`;
+  }
+
+  // Render rev share pill (pill 2 — Stripe-funded, toggle-dependent)
+  const revsharePill = document.querySelector('.indicator[data-key="revshare"]');
+  if (revsharePill) {
+    if (isRevshareAllowed() && revshareToggle === 'yes') {
+      revsharePill.querySelector('.indicator-text').textContent = REVSHARE_DATA.text;
+      revsharePill.className = `indicator ${REVSHARE_DATA.style}`;
+      revsharePill.style.left = `${getColOffset(REVSHARE_DATA.col) + 16}px`;
+      revsharePill.style.transform = '';
+    } else {
+      revsharePill.className = 'indicator hidden';
+      revsharePill.style.left = '';
+    }
+  }
+
+  // Notes
+  document.querySelectorAll('.note').forEach(n => n.classList.add('hidden'));
+  if (staticData.note) {
+    document.getElementById(staticData.note).classList.remove('hidden');
+  }
+
+  // Update toggle button disabled states and explanation boxes
+  const validity = VALIDITY[currentTab];
+  const riskStripeBtn = document.querySelector('[data-toggle="risk"][data-value="stripe"]');
+  const pricingStripeBtn = document.querySelector('[data-toggle="pricing"][data-value="stripe"]');
+  const revshareYesBtn = document.querySelector('[data-toggle="revshare"][data-value="yes"]');
+
+  riskStripeBtn.classList.toggle('disabled', !validity.risk);
+  document.getElementById('explain-risk').classList.toggle('hidden', validity.risk);
+
+  pricingStripeBtn.classList.toggle('disabled', !validity.pricing);
+  document.getElementById('explain-pricing').classList.toggle('hidden', validity.pricing);
+
+  revshareYesBtn.classList.toggle('disabled', !isRevshareAllowed());
+  document.getElementById('explain-revshare').classList.toggle('hidden', isRevshareAllowed());
+
+  renderSummaryPills();
+  updateHash();
+}
+
+function updateToggleUI(group) {
+  const value = group === 'risk' ? riskToggle : group === 'pricing' ? pricingToggle : revshareToggle;
+  document.querySelectorAll(`[data-toggle="${group}"]`).forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.value === value);
+  });
+}
+
+// Tab clicks
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+    currentTab = tab.dataset.tab;
+    if (currentTab === 'direct') {
+      riskToggle = 'stripe';
+      pricingToggle = 'stripe';
+      revshareToggle = 'yes';
+      updateToggleUI('risk');
+      updateToggleUI('pricing');
+      updateToggleUI('revshare');
+    }
+    renderAll();
+    restartFlow();
+  });
+});
+
+// Expand/collapse all
+document.getElementById('expand-all').addEventListener('click', (e) => {
+  e.preventDefault();
+  const link = e.currentTarget;
+  const allCollapsed = document.querySelectorAll('.section-heading.collapsed').length > 0;
+  if (allCollapsed) {
+    document.querySelectorAll('.section-heading.collapsed').forEach(h => {
+      const section = h.dataset.section;
+      h.classList.remove('collapsed');
+      document.querySelector(`[data-section-rows="${section}"]`).style.display = '';
+      document.querySelector(`[data-section-summary="${section}"]`).style.display = 'none';
+    });
+    link.textContent = 'Collapse all';
+  } else {
+    document.querySelectorAll('.section-heading:not(.collapsed)').forEach(h => {
+      const section = h.dataset.section;
+      h.classList.add('collapsed');
+      document.querySelector(`[data-section-rows="${section}"]`).style.display = 'none';
+      document.querySelector(`[data-section-summary="${section}"]`).style.display = '';
+    });
+    link.textContent = 'Expand all';
+  }
+  renderSummaryPills();
+});
+
+// Ledger toggle
+document.getElementById('ledger-toggle').addEventListener('click', () => {
+  const toggle = document.getElementById('ledger-toggle');
+  const panel = document.getElementById('ledger-panel');
+  const isCollapsed = panel.classList.contains('collapsed');
+  if (isCollapsed) {
+    panel.classList.remove('collapsed');
+    toggle.classList.add('expanded');
+  } else {
+    panel.classList.add('collapsed');
+    toggle.classList.remove('expanded');
+  }
+});
+
+// Flow animation collapse/expand
+document.getElementById('flow-collapse-bar').addEventListener('click', () => {
+  const bar = document.getElementById('flow-collapse-bar');
+  const anim = document.getElementById('flow-animation');
+  const isCollapsed = bar.classList.contains('collapsed');
+  if (isCollapsed) {
+    bar.classList.remove('collapsed');
+    anim.classList.remove('collapsed');
+    restartFlow();
+  } else {
+    bar.classList.add('collapsed');
+    anim.classList.add('collapsed');
+    clearFlow();
+  }
+  updateHash();
+});
+
+// Toggle clicks
+document.querySelectorAll('.toggle-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    if (pill.classList.contains('disabled')) return;
+    const group = pill.dataset.toggle;
+    const value = pill.dataset.value;
+    if (group === 'risk') riskToggle = value;
+    if (group === 'pricing') pricingToggle = value;
+    if (group === 'revshare') revshareToggle = value;
+    updateToggleUI(group);
+    renderAll();
+    restartFlow();
+  });
+});
+
+// Section collapse/expand
+const SECTION_KEYS = {
+  'customer-facing': ['descriptor', 'radar'],
+  'money': ['funds', 'fee-rate', 'stripe-fees', 'revenue'],
+  'liability': ['liability', 'loss-liability', 'dispute-evidence', 'refund', 'risk-screening', 'interventions'],
+  'data': ['customers', 'payment-method', 'catalog']
+};
+
+document.querySelectorAll('.section-heading[data-section]').forEach(heading => {
+  heading.addEventListener('click', () => {
+    const section = heading.dataset.section;
+    const isCollapsed = heading.classList.contains('collapsed');
+    if (isCollapsed) {
+      animateExpand(section);
+    } else {
+      animateCollapse(section);
+    }
+    updateHash();
+  });
+});
+
+function getRowCol(key) {
+  const staticData = STATIC[currentTab];
+  const riskData = RISK_ROWS[riskToggle];
+  const pricingData = PRICING_ROWS[pricingToggle];
+  const revenueData = REVENUE_ROWS[currentTab];
+  if (staticData[key]) return staticData[key].col;
+  if (riskData[key]) return riskData[key].col;
+  if (pricingData[key]) return pricingData[key].col;
+  if (revenueData && revenueData[key]) return revenueData[key].col;
+  return null;
+}
+
+function renderSummaryPills() {
+  Object.keys(SECTION_KEYS).forEach(section => {
+    const summary = document.querySelector(`[data-section-summary="${section}"]`);
+    if (!summary) return;
+    const track = summary.querySelector('.swimlane-track');
+    const trackWidth = track.offsetWidth;
+    const third = trackWidth / 3;
+    const cols = new Set();
+    SECTION_KEYS[section].forEach(key => {
+      const col = getRowCol(key);
+      if (col) cols.add(col);
+    });
+    if (section === 'money' && revshareToggle === 'yes') cols.add('stripe');
+
+    summary.querySelectorAll('.summary-pill').forEach(pill => {
+      const col = pill.dataset.col;
+      if (cols.has(col)) {
+        pill.style.display = 'inline-flex';
+        let offset = 0;
+        if (col === 'ca') offset = third / 2 - pill.offsetWidth / 2;
+        if (col === 'platform') offset = third + third / 2 - pill.offsetWidth / 2;
+        if (col === 'stripe') offset = third * 2 + third / 2 - pill.offsetWidth / 2;
+        pill.style.left = Math.max(4, offset) + 'px';
+      } else {
+        pill.style.display = 'none';
+      }
+    });
+  });
+}
+
+// Animation helpers
+const ANIM_DURATION = 400;
+const ANIM_EASING = 'cubic-bezier(0.4, 0, 0.2, 1)';
+let animating = false;
+
+function animateCollapse(section) {
+  if (animating) return;
+  animating = true;
+  const rows = document.querySelector(`[data-section-rows="${section}"]`);
+  const summary = document.querySelector(`[data-section-summary="${section}"]`);
+  const heading = document.querySelector(`.section-heading[data-section="${section}"]`);
+
+  // Capture detail pill positions
+  const detailPills = rows.querySelectorAll('.indicator:not(.hidden)');
+  const pillRects = Array.from(detailPills).map(p => p.getBoundingClientRect());
+
+  // Switch DOM state
+  heading.classList.add('collapsed');
+  rows.style.display = 'none';
+  summary.style.display = '';
+  renderSummaryPills();
+
+  // Animate summary pills from detail pill average positions
+  const summaryPills = summary.querySelectorAll('.summary-pill[style*="inline-flex"]');
+  summaryPills.forEach(sp => {
+    const col = sp.dataset.col;
+    const matchingRects = pillRects.filter((r, i) => {
+      const key = SECTION_KEYS[section][i];
+      return key && getRowCol(key) === col;
+    });
+    if (matchingRects.length === 0) return;
+    const avgY = matchingRects.reduce((sum, r) => sum + r.top + r.height/2, 0) / matchingRects.length;
+    const targetRect = sp.getBoundingClientRect();
+    const deltaY = avgY - (targetRect.top + targetRect.height/2);
+
+    sp.animate([
+      { transform: `translateY(${deltaY}px) scale(0.8)`, opacity: 0.3 },
+      { transform: 'translateY(0) scale(1)', opacity: 1 }
+    ], { duration: ANIM_DURATION, easing: ANIM_EASING });
+  });
+
+  setTimeout(() => { animating = false; }, ANIM_DURATION);
+}
+
+function animateExpand(section) {
+  if (animating) return;
+  animating = true;
+  const rows = document.querySelector(`[data-section-rows="${section}"]`);
+  const summary = document.querySelector(`[data-section-summary="${section}"]`);
+  const heading = document.querySelector(`.section-heading[data-section="${section}"]`);
+
+  // Switch DOM state
+  heading.classList.remove('collapsed');
+  summary.style.display = 'none';
+  rows.style.display = '';
+
+  // Simple fade-in for detail pills (no positional animation)
+  const detailPills = rows.querySelectorAll('.indicator:not(.hidden)');
+  detailPills.forEach((pill) => {
+    pill.animate([
+      { opacity: 0, transform: pill.style.transform + ' scale(0.85)' },
+      { opacity: 1, transform: pill.style.transform + ' scale(1)' }
+    ], { duration: ANIM_DURATION, easing: ANIM_EASING });
+  });
+
+  setTimeout(() => { animating = false; }, ANIM_DURATION);
+}
+
+// ===== FLOW ANIMATION =====
+function getEntityPos() {
+  const container = document.getElementById('flow-animation');
+  const rect = container.getBoundingClientRect();
+  const entities = ['customer', 'ca', 'platform', 'stripe', 'ca2'];
+  const pos = {};
+  entities.forEach(id => {
+    const el = document.getElementById('entity-' + id);
+    if (!el || el.style.display === 'none') { pos[id] = { x: 0, y: 0 }; return; }
+    const r = el.getBoundingClientRect();
+    pos[id] = { x: r.left + r.width / 2 - rect.left, y: r.top + r.height / 2 - rect.top };
+  });
+  return pos;
+}
+let ENTITY_POS = { customer: {x:0,y:0}, ca: {x:0,y:0}, platform: {x:0,y:0}, stripe: {x:0,y:0}, ca2: {x:0,y:0} };
+
+const NOTE_COLORS = {
+  ca: { bg: 'rgba(0,161,194,0.12)', border: '#00A1C2', text: '#00A1C2' },
+  platform: { bg: 'rgba(255,97,24,0.12)', border: '#FF6118', text: '#FF6118' },
+  stripe: { bg: 'rgba(99,91,255,0.15)', border: '#635BFF', text: '#635BFF' },
+  customer: { bg: 'rgba(66,84,102,0.1)', border: '#425466', text: '#425466' }
+};
+
+function getFlowSteps() {
+  const tab = currentTab;
+  if (tab === 'direct') {
+    const steps = [
+      { from: 'customer', to: 'ca', amount: 100, color: 'customer', label: 'Payment' }
+    ];
+    if (pricingToggle === 'stripe') {
+      steps.push({ from: 'ca', to: 'platform', amount: 5, color: 'ca', label: 'Platform fee' });
+      steps.push({ from: 'ca', to: 'stripe', amount: 2, color: 'ca', label: 'Stripe fee' });
+    } else {
+      steps.push({ from: 'ca', to: 'platform', amount: 5, color: 'ca', label: 'Platform fee' });
+      steps.push({ from: 'platform', to: 'stripe', amount: 2, color: 'platform', label: 'Stripe fee' });
+    }
+    if (revshareToggle === 'yes' && pricingToggle === 'stripe') {
+      steps.push({ from: 'stripe', to: 'platform', amount: 1, color: 'stripe', label: 'Rev. share' });
+    }
+    return steps;
+  }
+  if (tab === 'destination' || tab === 'destination-obo') {
+    return [
+      { from: 'customer', to: 'platform', amount: 100, color: 'customer', label: 'Payment' },
+      { from: 'platform', to: 'ca', amount: 95, color: 'platform', simultaneous: true, label: 'Transfer' },
+      { from: 'platform', to: 'stripe', amount: 2, color: 'platform', simultaneous: true, label: 'Stripe fee' }
+    ];
+  }
+  if (tab === 'sct' || tab === 'sct-obo') {
+    return [
+      { from: 'customer', to: 'platform', amount: 100, color: 'customer', label: 'Payment' },
+      { from: 'platform', to: 'ca', amount: 50, color: 'platform', simultaneous: true, label: 'Transfer 1' },
+      { from: 'platform', to: 'ca2', amount: 45, color: 'platform', simultaneous: true, label: 'Transfer 2' },
+      { from: 'platform', to: 'stripe', amount: 2, color: 'platform', label: 'Stripe fee' }
+    ];
+  }
+  return [];
+}
+
+let pathLaneCounter = 0;
+
+function isAdjacent(from, to) {
+  const order = ['customer', 'ca', 'platform', 'stripe'];
+  const fi = order.indexOf(from);
+  const ti = order.indexOf(to);
+  if (fi === -1 || ti === -1) return false;
+  return Math.abs(fi - ti) === 1;
+}
+
+function makePath(from, to) {
+  const f = ENTITY_POS[from];
+  const t = ENTITY_POS[to];
+  const boxW = 65, boxH = 48;
+  const r = 12;
+  let fx = f.x, fy = f.y, tx = t.x, ty = t.y;
+  const dx = t.x - f.x;
+  const goingRight = dx > 0;
+  const goingDown = t.y > f.y + 20;
+
+  if (goingDown) {
+    // Path to CA2 — down from bottom of Platform, elbow left, arrive at right side of CA2
+    fx = f.x;
+    fy = f.y + boxH;
+    tx = t.x + boxW;
+    ty = t.y;
+    const midY = ty;
+    return `M${fx},${fy} L${fx},${midY - r} Q${fx},${midY} ${fx - r},${midY} L${tx},${midY}`;
+  } else if (goingRight && isAdjacent(from, to)) {
+    // Adjacent forward — straight horizontal line from side to side
+    fx = f.x + boxW;
+    tx = t.x - boxW;
+    return `M${fx},${fy} L${tx},${ty}`;
+  } else if (goingRight) {
+    // Non-adjacent forward — top-to-top elbow above, capped to stay in bounds
+    fx = f.x;
+    tx = t.x;
+    fy = f.y - boxH;
+    ty = t.y - boxH;
+    const lane = Math.max(20, fy - (50 + pathLaneCounter * 18));
+    pathLaneCounter++;
+    return `M${fx},${fy} L${fx},${lane + r} Q${fx},${lane} ${fx + r},${lane} L${tx - r},${lane} Q${tx},${lane} ${tx},${lane + r} L${tx},${ty}`;
+  } else if (!goingRight && isAdjacent(from, to)) {
+    // Adjacent return — straight horizontal from side to side
+    fx = f.x - boxW;
+    tx = t.x + boxW;
+    return `M${fx},${fy} L${tx},${ty}`;
+  } else {
+    // Non-adjacent return — bottom-to-bottom elbow below
+    fx = f.x;
+    tx = t.x;
+    fy = f.y + boxH;
+    ty = t.y + boxH;
+    const lane = fy + (25 + pathLaneCounter * 18);
+    pathLaneCounter++;
+    return `M${fx},${fy} L${fx},${lane - r} Q${fx},${lane} ${fx - r},${lane} L${tx + r},${lane} Q${tx},${lane} ${tx},${lane - r} L${tx},${ty}`;
+  }
+}
+
+let flowTimeout = null;
+let flowRunning = false;
+let flowGeneration = 0;
+const balances = { ca: 0, platform: 0, stripe: 0, ca2: 0 };
+
+const ledgerRows = [];
+let caNet = 0, platformNet = 0;
+
+function resetBalances() {
+  ['ca', 'platform', 'stripe', 'ca2'].forEach(id => {
+    balances[id] = 0;
+    const el = document.querySelector(`.flow-balance[data-entity="${id}"]`);
+    if (el) { el.textContent = '$0'; el.classList.remove('visible'); }
+  });
+  ledgerRows.length = 0;
+  caNet = 0;
+  platformNet = 0;
+  const body = document.getElementById('ledger-body');
+  if (body) body.innerHTML = '';
+  const foot = document.getElementById('ledger-foot');
+  if (foot) foot.innerHTML = '';
+  const verify = document.getElementById('ledger-verify');
+  if (verify) verify.textContent = '';
+}
+
+function formatAmount(n) {
+  if (n === 0) return '';
+  return (n > 0 ? '+' : '-') + '$' + Math.abs(n);
+}
+
+function addLedgerEntry(step) {
+  let caAmt = 0, platAmt = 0;
+  if (step.to === 'ca' || step.to === 'ca2') caAmt += step.amount;
+  if (step.to === 'platform') platAmt += step.amount;
+  if (step.from === 'ca' || step.from === 'ca2') caAmt -= step.amount;
+  if (step.from === 'platform') platAmt -= step.amount;
+
+  ledgerRows.push({ label: step.label, ca: caAmt, platform: platAmt });
+  caNet += caAmt;
+  platformNet += platAmt;
+
+  // Render
+  const body = document.getElementById('ledger-body');
+  const row = document.createElement('tr');
+  row.innerHTML = `<td>${step.label}</td><td>${formatAmount(caAmt)}</td><td>${formatAmount(platAmt)}</td>`;
+  body.appendChild(row);
+
+  // Update footer
+  const foot = document.getElementById('ledger-foot');
+  foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${formatAmount(caNet)}</td><td>${formatAmount(platformNet)}</td></tr>`;
+
+  // Verification
+  const verify = document.getElementById('ledger-verify');
+  const stripeNet = 100 - caNet - platformNet;
+  verify.textContent = `$${caNet} + $${platformNet} + $${stripeNet} (Stripe) = $100`;
+}
+
+function updateBalance(entity, delta) {
+  if (entity === 'customer') return;
+  balances[entity] += delta;
+  const el = document.querySelector(`.flow-balance[data-entity="${entity}"]`);
+  if (el) {
+    el.textContent = '$' + balances[entity];
+    el.classList.add('visible');
+  }
+}
+
+function clearFlow() {
+  flowRunning = false;
+  flowGeneration++;
+  if (flowTimeout) clearTimeout(flowTimeout);
+  const pathsG = document.getElementById('flow-paths');
+  const notesG = document.getElementById('flow-notes');
+  if (pathsG) pathsG.innerHTML = '';
+  if (notesG) notesG.innerHTML = '';
+  resetBalances();
+  const ca2 = document.getElementById('entity-ca2');
+  const container = document.getElementById('flow-animation');
+  const isSCT = currentTab === 'sct' || currentTab === 'sct-obo';
+  ca2.style.display = isSCT ? '' : 'none';
+  container.style.minHeight = isSCT ? '340px' : '';
+}
+
+function createNote(amount, color) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.classList.add('flow-note');
+  const c = NOTE_COLORS[color];
+  const w = amount >= 100 ? 52 : 42;
+  g.innerHTML = `<rect x="${-w/2}" y="-13" width="${w}" height="26" rx="5" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5"/>
+    <text x="0" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="${c.text}">$${amount}</text>`;
+  return g;
+}
+
+const FLOW_SPEED = 180; // pixels per second
+
+function getPathDuration(pathD) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', pathD);
+  return Math.max(1000, (path.getTotalLength() / FLOW_SPEED) * 1000);
+}
+
+function animateNote(note, pathD, forceDuration) {
+  return new Promise(resolve => {
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathD);
+    const totalLength = path.getTotalLength();
+    const duration = forceDuration || Math.max(1000, (totalLength / FLOW_SPEED) * 1000);
+    const start = performance.now();
+    function tick(now) {
+      const elapsed = now - start;
+      const t = Math.min(elapsed / duration, 1);
+      const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      const pt = path.getPointAtLength(eased * totalLength);
+      note.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+      if (t < 1 && flowRunning) {
+        requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function pulseEntity(entityId) {
+  const el = document.getElementById('entity-' + entityId);
+  if (!el) return;
+  el.classList.remove('pulse');
+  void el.offsetWidth;
+  el.classList.add('pulse');
+  setTimeout(() => el.classList.remove('pulse'), 400);
+}
+
+async function runFlow() {
+  clearFlow();
+  flowRunning = true;
+  ENTITY_POS = getEntityPos();
+  const svg = document.getElementById('flow-svg');
+  const container = document.getElementById('flow-animation');
+  const w = container.offsetWidth;
+  const h = container.offsetHeight;
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const steps = getFlowSteps();
+  const pathsG = document.getElementById('flow-paths');
+  const notesG = document.getElementById('flow-notes');
+
+  // Draw faint paths
+  pathLaneCounter = 0;
+  steps.forEach(step => {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', makePath(step.from, step.to));
+    p.classList.add('flow-path');
+    p.setAttribute('marker-end', 'url(#arrowhead)');
+    pathsG.appendChild(p);
+  });
+
+  // Animate steps
+  let i = 0;
+  while (i < steps.length && flowRunning) {
+    // Collect simultaneous group: only group steps that are marked simultaneous together
+    const group = [steps[i]];
+    if (!steps[i].simultaneous) {
+      // This step plays alone; but peek ahead — if next steps are simultaneous, they form their own group next iteration
+    } else {
+      // This step starts a simultaneous group — collect all consecutive simultaneous steps
+      while (i + 1 < steps.length && steps[i + 1].simultaneous) {
+        i++;
+        group.push(steps[i]);
+      }
+    }
+
+    const gen = flowGeneration;
+
+    // Deduct from source balances
+    group.forEach(step => updateBalance(step.from, -step.amount));
+
+    // For simultaneous groups, use the longest path's duration so they arrive together
+    const groupPaths = group.map(step => makePath(step.from, step.to));
+    const groupDuration = group.length > 1
+      ? Math.max(...groupPaths.map(p => getPathDuration(p)))
+      : null;
+
+    // Animate group in parallel
+    const promises = group.map((step, idx) => {
+      const note = createNote(step.amount, step.color);
+      notesG.appendChild(note);
+      const pathD = groupPaths[idx];
+      return animateNote(note, pathD, groupDuration).then(() => {
+        if (flowGeneration !== gen) return;
+        pulseEntity(step.to);
+        updateBalance(step.to, step.amount);
+        addLedgerEntry(step);
+        if (note.parentNode) notesG.removeChild(note);
+      });
+    });
+    await Promise.all(promises);
+    if (flowGeneration !== gen) return;
+
+    if (!flowRunning) return;
+    await new Promise(r => { flowTimeout = setTimeout(r, 1200); });
+    i++;
+  }
+
+  // Loop after pause
+  if (flowRunning) {
+    flowTimeout = setTimeout(() => {
+      if (flowRunning) runFlow();
+    }, 1500);
+  }
+}
+
+// Start flow on load and restart on changes
+function restartFlow() {
+  clearFlow();
+  setTimeout(() => runFlow(), 200);
+}
+
+// ===== URL STATE =====
+function updateHash() {
+  const expandedSections = [];
+  document.querySelectorAll('.section-heading:not(.collapsed)').forEach(h => {
+    expandedSections.push(h.dataset.section);
+  });
+  const animOpen = !document.getElementById('flow-collapse-bar').classList.contains('collapsed');
+  const params = new URLSearchParams();
+  params.set('tab', currentTab);
+  params.set('risk', riskToggle);
+  params.set('fees', pricingToggle === 'stripe' ? 'ca' : 'platform');
+  params.set('revshare', revshareToggle);
+  if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
+  if (!animOpen) params.set('anim', 'closed');
+  window.history.replaceState(null, '', '#' + params.toString());
+}
+
+function readHash() {
+  const hash = window.location.hash.slice(1);
+  if (!hash) return;
+  const params = new URLSearchParams(hash);
+
+  if (params.has('tab')) {
+    currentTab = params.get('tab');
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === currentTab);
+      t.setAttribute('aria-selected', t.dataset.tab === currentTab ? 'true' : 'false');
+    });
+  }
+  if (params.has('risk')) riskToggle = params.get('risk');
+  if (params.has('fees')) pricingToggle = params.get('fees') === 'ca' ? 'stripe' : 'platform';
+  if (params.has('revshare')) revshareToggle = params.get('revshare');
+
+  // Update toggle UIs
+  updateToggleUI('risk');
+  updateToggleUI('pricing');
+  updateToggleUI('revshare');
+
+  // Sections
+  if (params.has('sections')) {
+    const open = params.get('sections').split(',');
+    document.querySelectorAll('.section-heading[data-section]').forEach(h => {
+      const section = h.dataset.section;
+      const rows = document.querySelector(`[data-section-rows="${section}"]`);
+      const summary = document.querySelector(`[data-section-summary="${section}"]`);
+      if (open.includes(section)) {
+        h.classList.remove('collapsed');
+        rows.style.display = '';
+        summary.style.display = 'none';
+      } else {
+        h.classList.add('collapsed');
+        rows.style.display = 'none';
+        summary.style.display = '';
+      }
+    });
+  }
+
+  // Animation
+  if (params.get('anim') === 'closed') {
+    document.getElementById('flow-collapse-bar').classList.add('collapsed');
+    document.getElementById('flow-animation').classList.add('collapsed');
+  }
+}
+
+// ===== LABEL SETTINGS =====
+const LABEL_DEFAULTS = {
+  customer: 'Customer',
+  ca: 'Connected Account',
+  platform: 'Platform',
+  ca2: 'Connected Account 2'
+};
+
+const labelState = { ...LABEL_DEFAULTS };
+
+function applyLabels() {
+  document.querySelector('#entity-customer .flow-entity-label').textContent = labelState.customer;
+  document.querySelector('#entity-ca span:first-child').textContent = labelState.ca;
+  document.querySelector('#entity-platform span:first-child').textContent = labelState.platform;
+  document.querySelector('#entity-ca2 span:first-child').textContent = labelState.ca2;
+}
+
+function labelsToHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  let hasCustom = false;
+  Object.keys(LABEL_DEFAULTS).forEach(key => {
+    if (labelState[key] !== LABEL_DEFAULTS[key]) {
+      params.set('l_' + key, labelState[key]);
+      hasCustom = true;
+    } else {
+      params.delete('l_' + key);
+    }
+  });
+  window.history.replaceState(null, '', '#' + params.toString());
+}
+
+function labelsFromHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  Object.keys(LABEL_DEFAULTS).forEach(key => {
+    if (params.has('l_' + key)) {
+      labelState[key] = params.get('l_' + key);
+    }
+  });
+}
+
+// Modal controls
+const overlay = document.getElementById('settings-overlay');
+document.getElementById('settings-cog').addEventListener('click', () => {
+  document.getElementById('label-customer').value = labelState.customer;
+  document.getElementById('label-ca').value = labelState.ca;
+  document.getElementById('label-platform').value = labelState.platform;
+  document.getElementById('label-ca2').value = labelState.ca2;
+  overlay.classList.add('visible');
+});
+
+document.getElementById('settings-done').addEventListener('click', () => {
+  labelState.customer = document.getElementById('label-customer').value.trim() || LABEL_DEFAULTS.customer;
+  labelState.ca = document.getElementById('label-ca').value.trim() || LABEL_DEFAULTS.ca;
+  labelState.platform = document.getElementById('label-platform').value.trim() || LABEL_DEFAULTS.platform;
+  labelState.ca2 = document.getElementById('label-ca2').value.trim() || LABEL_DEFAULTS.ca2;
+  applyLabels();
+  labelsToHash();
+  overlay.classList.remove('visible');
+});
+
+document.getElementById('settings-reset').addEventListener('click', () => {
+  Object.assign(labelState, LABEL_DEFAULTS);
+  document.getElementById('label-customer').value = LABEL_DEFAULTS.customer;
+  document.getElementById('label-ca').value = LABEL_DEFAULTS.ca;
+  document.getElementById('label-platform').value = LABEL_DEFAULTS.platform;
+  document.getElementById('label-ca2').value = LABEL_DEFAULTS.ca2;
+  applyLabels();
+  labelsToHash();
+});
+
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) overlay.classList.remove('visible');
+});
+
+// Read state from URL on load
+readHash();
+labelsFromHash();
+
+// Initial render
+requestAnimationFrame(() => {
+  renderAll();
+  applyLabels();
+  if (!document.getElementById('flow-collapse-bar').classList.contains('collapsed')) {
+    restartFlow();
+  }
+});
+window.addEventListener('resize', () => renderAll());
+</script>
+
+
+</body></html>

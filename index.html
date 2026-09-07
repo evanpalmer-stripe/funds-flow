@@ -1457,6 +1457,7 @@ document.getElementById('ledger-toggle').addEventListener('click', () => {
     panel.classList.add('collapsed');
     toggle.classList.remove('expanded');
   }
+  updateHash();
 });
 
 // Flow animation collapse/expand
@@ -1695,6 +1696,7 @@ function makePath(from, to) {
   const f = ENTITY_POS[from];
   const t = ENTITY_POS[to];
   const boxW = 65, boxH = 48;
+  const customerW = 25;
   const r = 12;
   let fx = f.x, fy = f.y, tx = t.x, ty = t.y;
   const dx = t.x - f.x;
@@ -1711,8 +1713,8 @@ function makePath(from, to) {
     return `M${fx},${fy} L${fx},${midY - r} Q${fx},${midY} ${fx - r},${midY} L${tx},${midY}`;
   } else if (goingRight && isAdjacent(from, to)) {
     // Adjacent forward — straight horizontal line from side to side
-    fx = f.x + boxW;
-    tx = t.x - boxW;
+    fx = f.x + (from === 'customer' ? customerW : boxW);
+    tx = t.x - (to === 'customer' ? customerW : boxW);
     return `M${fx},${fy} L${tx},${ty}`;
   } else if (goingRight) {
     // Non-adjacent forward — top-to-top elbow above, capped to stay in bounds
@@ -1973,6 +1975,7 @@ function updateHash() {
   params.set('revshare', revshareToggle);
   if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
   if (!animOpen) params.set('anim', 'closed');
+  if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
   window.history.replaceState(null, '', '#' + params.toString());
 }
 
@@ -2014,6 +2017,12 @@ function readHash() {
         summary.style.display = '';
       }
     });
+  }
+
+  // Ledger
+  if (params.get('ledger') === 'open') {
+    document.getElementById('ledger-panel').classList.remove('collapsed');
+    document.getElementById('ledger-toggle').classList.add('expanded');
   }
 
   // Animation

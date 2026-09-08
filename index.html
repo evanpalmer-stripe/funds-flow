@@ -1492,6 +1492,7 @@ document.getElementById('ledger-toggle').addEventListener('click', () => {
     panel.classList.add('collapsed');
     toggle.classList.remove('expanded');
   }
+  updateHash();
 });
 
 // Flow animation collapse/expand
@@ -2055,6 +2056,7 @@ function updateHash() {
   params.set('revshare', revshareToggle);
   if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
   if (!animOpen) params.set('anim', 'closed');
+  if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
   window.history.replaceState(null, '', '#' + params.toString());
 }
 
@@ -2096,6 +2098,12 @@ function readHash() {
         summary.style.display = '';
       }
     });
+  }
+
+  // Ledger
+  if (params.get('ledger') === 'open') {
+    document.getElementById('ledger-panel').classList.remove('collapsed');
+    document.getElementById('ledger-toggle').classList.add('expanded');
   }
 
   // Animation

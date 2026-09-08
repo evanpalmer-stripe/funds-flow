@@ -334,6 +334,19 @@ h1 {
   align-items: center;
   overflow: hidden;
   min-height: 260px;
+  view-transition-name: flow-panel;
+}
+
+/* Coordinated morph on charge-type / toggle switches: the group animates the panel's
+   size while the old/new snapshots crossfade, all on one shared timeline. */
+::view-transition-group(flow-panel) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+::view-transition-old(flow-panel),
+::view-transition-new(flow-panel) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
 .flow-stack {
@@ -1817,6 +1830,7 @@ let flowGeneration = 0;
 let flowPaused = false;
 let flowStepResolve = null;
 let flowSkipToEnd = false;
+let flowStarted = false; // first flow render bypasses the view transition
 const balances = { ca: 0, platform: 0, stripe: 0, ca2: 0 };
 
 const ledgerRows = [];
@@ -1972,12 +1986,11 @@ function updatePauseIcon() {
   }
 }
 
-async function runFlow() {
-  clearFlow();
-  flowRunning = true;
-  flowPaused = false;
-  flowSkipToEnd = false;
-  updatePauseIcon();
+// Synchronous layout: size the panel to the current tab and draw the static rails.
+// Split out from runFlow so it can run inside a View Transition callback (which
+// snapshots the resized "at rest" state) with the note animation deferred to after
+// the transition settles. Preserves the exact pathLaneCounter sequence runFlow relies on.
+function layoutFlow() {
   const svg = document.getElementById('flow-svg');
   const stack = document.getElementById('flow-stack');
   const grid = stack.querySelector('.flow-grid');
@@ -1992,8 +2005,6 @@ async function runFlow() {
   ENTITY_POS = getEntityPos();
   const steps = getFlowSteps();
   const pathsG = document.getElementById('flow-paths');
-  const notesG = document.getElementById('flow-notes');
-
   pathLaneCounter = 0;
   steps.forEach(step => {
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -2002,6 +2013,17 @@ async function runFlow() {
     p.setAttribute('marker-end', 'url(#arrowhead)');
     pathsG.appendChild(p);
   });
+}
+
+async function runFlow() {
+  clearFlow();
+  flowRunning = true;
+  flowPaused = false;
+  flowSkipToEnd = false;
+  updatePauseIcon();
+  layoutFlow();
+  const steps = getFlowSteps();
+  const notesG = document.getElementById('flow-notes');
 
   let i = 0;
   while (i < steps.length && flowRunning) {
@@ -2075,10 +2097,22 @@ async function runFlow() {
   }
 }
 
-// Start flow on load and restart on changes
+// Start flow on load and restart on changes. On charge-type / toggle switches we
+// wrap the layout change in a View Transition so the browser morphs the panel height
+// and crossfades the old/new diagram on a single coordinated timeline; the note
+// animation then runs once the morph settles. First render and reduced-motion skip it.
 function restartFlow() {
-  clearFlow();
-  setTimeout(() => runFlow(), 200);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!document.startViewTransition || reduce || !flowStarted) {
+    flowStarted = true;
+    runFlow();
+    return;
+  }
+  const vt = document.startViewTransition(() => {
+    clearFlow();   // reset balances, toggle CA2, clear old rails (synchronous)
+    layoutFlow();  // resize panel + place entities + draw new rails → the "after" snapshot
+  });
+  vt.finished.then(() => runFlow()).catch(() => runFlow());
 }
 
 // ===== URL STATE =====

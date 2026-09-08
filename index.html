@@ -2045,19 +2045,23 @@ function restartFlow() {
 
 // ===== URL STATE =====
 function updateHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
   const expandedSections = [];
   document.querySelectorAll('.section-heading:not(.collapsed)').forEach(h => {
     expandedSections.push(h.dataset.section);
   });
   const animOpen = !document.getElementById('flow-collapse-bar').classList.contains('collapsed');
-  const params = new URLSearchParams();
   params.set('tab', currentTab);
   params.set('risk', riskToggle);
   params.set('fees', pricingToggle === 'stripe' ? 'ca' : 'platform');
   params.set('revshare', revshareToggle);
   if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
+  else params.delete('sections');
   if (!animOpen) params.set('anim', 'closed');
+  else params.delete('anim');
   if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
+  else params.delete('ledger');
   window.history.replaceState(null, '', '#' + params.toString());
 }
 
@@ -2225,6 +2229,10 @@ document.getElementById('flow-end').addEventListener('click', () => {
 async function captureFlowPanel() {
   const el = document.getElementById('flow-animation');
   if (typeof html2canvas === 'undefined') { alert('Screenshot library not loaded'); return null; }
+  const controls = el.querySelector('.flow-controls');
+  const cog = el.querySelector('.settings-cog');
+  if (controls) controls.style.display = 'none';
+  if (cog) cog.style.display = 'none';
   const allEls = [el, ...el.querySelectorAll('*')];
   const saved = allEls.map(e => e.getAttribute('style'));
   allEls.forEach(e => {
@@ -2249,6 +2257,8 @@ async function captureFlowPanel() {
       if (saved[i] !== null) e.setAttribute('style', saved[i]);
       else e.removeAttribute('style');
     });
+    if (controls) controls.style.display = '';
+    if (cog) cog.style.display = '';
   }
   return new Promise(resolve => canvas.toBlob(resolve));
 }

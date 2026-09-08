@@ -757,6 +757,19 @@ h1 {
 .indicator.ca .indicator-dot { background: var(--ca-color); }
 .indicator.hybrid .indicator-dot { background: var(--hybrid-color); }
 
+/* Explanation toggle */
+.explain-toggle {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--slate-300);
+  text-decoration: none;
+  cursor: pointer;
+  text-align: center;
+}
+.explain-toggle:hover { color: var(--slate-500); text-decoration: underline; }
+
 /* Explanation boxes */
 .explanation-box {
   margin-top: 16px;
@@ -877,6 +890,7 @@ h1 {
         <button class="toggle-pill" data-toggle="revshare" data-value="no">No</button>
       </div>
     </div>
+    <a href="#" class="explain-toggle" id="explain-toggle">Please explain</a>
   </div>
 
   <!-- Table -->
@@ -1254,6 +1268,7 @@ let currentTab = 'direct';
 let riskToggle = 'stripe';
 let pricingToggle = 'stripe';
 let revshareToggle = 'yes';
+let showExplanations = false;
 
 function getColOffset(col) {
   const header = document.querySelector('.swimlane-header');
@@ -1393,7 +1408,7 @@ function renderAll() {
 
   // Notes
   document.querySelectorAll('.note').forEach(n => n.classList.add('hidden'));
-  if (staticData.note) {
+  if (showExplanations && staticData.note) {
     document.getElementById(staticData.note).classList.remove('hidden');
   }
 
@@ -1404,13 +1419,13 @@ function renderAll() {
   const revshareYesBtn = document.querySelector('[data-toggle="revshare"][data-value="yes"]');
 
   riskStripeBtn.classList.toggle('disabled', !validity.risk);
-  document.getElementById('explain-risk').classList.toggle('hidden', validity.risk);
+  document.getElementById('explain-risk').classList.toggle('hidden', !showExplanations || validity.risk);
 
   pricingStripeBtn.classList.toggle('disabled', !validity.pricing);
-  document.getElementById('explain-pricing').classList.toggle('hidden', validity.pricing);
+  document.getElementById('explain-pricing').classList.toggle('hidden', !showExplanations || validity.pricing);
 
   revshareYesBtn.classList.toggle('disabled', !isRevshareAllowed());
-  document.getElementById('explain-revshare').classList.toggle('hidden', isRevshareAllowed());
+  document.getElementById('explain-revshare').classList.toggle('hidden', !showExplanations || isRevshareAllowed());
 
   // Update doc links for current tab
   document.querySelectorAll('.swimlane-row').forEach(row => {
@@ -2062,6 +2077,8 @@ function updateHash() {
   else params.delete('anim');
   if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
   else params.delete('ledger');
+  if (showExplanations) params.set('explain', 'open');
+  else params.delete('explain');
   window.history.replaceState(null, '', '#' + params.toString());
 }
 
@@ -2109,6 +2126,12 @@ function readHash() {
   if (params.get('ledger') === 'open') {
     document.getElementById('ledger-panel').classList.remove('collapsed');
     document.getElementById('ledger-toggle').classList.add('expanded');
+  }
+
+  // Explanation
+  if (params.get('explain') === 'open') {
+    showExplanations = true;
+    document.getElementById('explain-toggle').textContent = 'Hide explanation';
   }
 
   // Animation
@@ -2280,6 +2303,14 @@ document.getElementById('flow-download').addEventListener('click', async () => {
   a.download = 'fund-flow-' + currentTab + '.png';
   a.click();
   URL.revokeObjectURL(url);
+});
+
+// Explanation toggle
+document.getElementById('explain-toggle').addEventListener('click', (e) => {
+  e.preventDefault();
+  showExplanations = !showExplanations;
+  document.getElementById('explain-toggle').textContent = showExplanations ? 'Hide explanation' : 'Please explain';
+  renderAll();
 });
 </script>
 

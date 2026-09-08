@@ -2371,15 +2371,43 @@ document.getElementById('flow-end').addEventListener('click', () => {
   skipToEnd();
 });
 
+// Render the fully-settled end state synchronously: every step applied (balances +
+// ledger complete), rails drawn and centred, no notes in flight. Used by the capture
+// path so a screenshot always shows the final state no matter when the button is pressed.
+function renderSettledFlow() {
+  clearFlow();                                     // stop the loop, reset balances, clear notes/paths
+  layoutFlow(true);                                // draw rails + centre content
+  getFlowSteps().forEach(step => applyStepInstant(step));
+}
+
 async function captureFlowPanel() {
   const el = document.getElementById('flow-animation');
   if (typeof html2canvas === 'undefined') { alert('Screenshot library not loaded'); return null; }
-  const cog = el.querySelector('.settings-cog');
+
+  // Build the settled state on the live panel, snapshot it with a deep clone, then
+  // immediately restart the animation — all synchronously, so the browser never paints
+  // the settled frame (no visible flash). html2canvas then renders the off-screen clone,
+  // which the user never sees, while the live panel keeps looping normally.
+  const rect = el.getBoundingClientRect();
+  renderSettledFlow();
+  const clone = el.cloneNode(true);
+  runFlow();  // resets the live panel to the start state and resumes looping, still this tick
+
+  clone.style.position = 'fixed';
+  clone.style.left = '-100000px';
+  clone.style.top = '0';
+  clone.style.margin = '0';
+  clone.style.boxSizing = 'border-box';
+  clone.style.width = rect.width + 'px';
+  clone.style.viewTransitionName = 'none';  // avoid duplicate VT name with the live panel
+  document.body.appendChild(clone);
+
+  const cog = clone.querySelector('.settings-cog');
   if (cog) cog.style.display = 'none';
-  const controls = el.querySelector('.flow-controls');
+  const controls = clone.querySelector('.flow-controls');
   if (controls) controls.style.display = 'none';
-  const allEls = [el, ...el.querySelectorAll('*')];
-  const saved = allEls.map(e => e.getAttribute('style'));
+  clone.querySelectorAll('*').forEach(e => e.style.viewTransitionName = 'none');
+  const allEls = [clone, ...clone.querySelectorAll('*')];
   allEls.forEach(e => {
     const cs = getComputedStyle(e);
     e.style.color = cs.color;
@@ -2394,16 +2422,12 @@ async function captureFlowPanel() {
     e.style.transition = 'none';
     e.style.animation = 'none';
   });
+
   let canvas;
   try {
-    canvas = await html2canvas(el, { backgroundColor: '#FFFFFF', scale: 4, useCORS: true, logging: false });
+    canvas = await html2canvas(clone, { backgroundColor: '#FFFFFF', scale: 4, useCORS: true, logging: false });
   } finally {
-    allEls.forEach((e, i) => {
-      if (saved[i] !== null) e.setAttribute('style', saved[i]);
-      else e.removeAttribute('style');
-    });
-    if (cog) cog.style.display = '';
-    if (controls) controls.style.display = '';
+    document.body.removeChild(clone);
   }
   return new Promise(resolve => canvas.toBlob(resolve));
 }

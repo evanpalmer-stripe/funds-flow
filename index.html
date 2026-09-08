@@ -383,7 +383,7 @@ h1 {
 
 .flow-grid {
   grid-area: 1 / 1;
-  align-self: end;
+  align-self: center;
   display: grid;
   grid-template-columns: 380px 1fr 1fr 1fr;
   align-items: center;
@@ -2022,13 +2022,41 @@ function layoutFlow(drawRails = true) {
   const clearance = parseInt(getComputedStyle(stack).getPropertyValue('--elbow-clearance')) || 50;
   const w = stack.offsetWidth;
   const gridH = grid.offsetHeight;
-  const h = gridH + clearance;
+  // Reserve clearance both above AND below the grid so the boxes sit on the panel's
+  // true vertical centre. The top clearance is where elbow arcs route; the bottom is
+  // balancing space (the grid is align-self:center within this taller stack).
+  const h = gridH + clearance * 2;
   svg.style.height = h + 'px';
   svg.setAttribute('width', w);
   svg.setAttribute('height', h);
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
   ENTITY_POS = getEntityPos();
   if (drawRails) drawFlowRails();
+  centerFlowContent();
+}
+
+// Vertically centre the DRAWN content (elbow arcs + entity boxes) within the panel.
+// The top arc-clearance is consumed by the routing arcs, but the matching bottom reserve
+// is always empty (no path is ever drawn below the lowest box), so a plain flex-centre
+// leaves a much larger gap below the lowest box than above the top arc. Measure the true
+// content bounds and nudge the stack so the gap above the highest arc equals the gap below
+// the lowest box — correct for every charge type regardless of arc height or row count.
+function centerFlowContent() {
+  const stack = document.getElementById('flow-stack');
+  const grid = stack.querySelector('.flow-grid');
+  const pathsG = document.getElementById('flow-paths');
+  const h = stack.offsetHeight;
+  let top = grid.offsetTop;
+  let bottom = grid.offsetTop + grid.offsetHeight;
+  if (pathsG && pathsG.childNodes.length) {
+    try {
+      const bb = pathsG.getBBox();
+      top = Math.min(top, bb.y);
+      bottom = Math.max(bottom, bb.y + bb.height);
+    } catch (e) { /* SVG not yet rendered — fall back to grid bounds */ }
+  }
+  const shift = ((h - bottom) - top) / 2;
+  stack.style.transform = `translateY(${shift.toFixed(2)}px)`;
 }
 
 // Draw the static rails for the current tab. Kept separate so the View Transition
@@ -2142,11 +2170,13 @@ function restartFlow() {
     return;
   }
   const vt = document.startViewTransition(() => {
-    clearFlow();        // reset balances, toggle CA2, clear old rails (synchronous)
-    layoutFlow(false);  // resize panel + place entities, but NO rails → they fade out during the morph
+    clearFlow();       // reset balances, toggle CA2, clear old rails (synchronous)
+    layoutFlow(true);  // resize panel, place entities, draw new rails + re-centre content
+    // Rails are drawn (not skipped) so the new snapshot is correctly centred — otherwise
+    // content would re-centre only after .finished and jump. Named boxes glide; the rails
+    // (inside the unnamed panel snapshot) crossfade old→new during the morph.
   });
-  // Draw the new rails and run the note animation only after the boxes have finished
-  // gliding into place — a clean morph → settle → rails → notes handoff.
+  // Run the note animation only after the boxes have finished gliding into place.
   vt.finished.then(() => runFlow()).catch(() => runFlow());
 }
 

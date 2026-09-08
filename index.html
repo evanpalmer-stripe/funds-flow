@@ -222,12 +222,10 @@ h1 {
 
 /* Animation controls */
 .flow-controls {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
   display: flex;
+  justify-content: flex-end;
   gap: 4px;
-  z-index: 2;
+  padding: 4px 0;
 }
 .flow-control-btn {
   width: 28px;
@@ -328,10 +326,9 @@ h1 {
   background: var(--white);
   border-radius: var(--radius-panel);
   box-shadow: var(--card-shadow);
-  padding: 24px 0;
-  min-height: 260px;
+  padding: 20px 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .flow-grid {
@@ -957,12 +954,12 @@ h1 {
       <g id="flow-notes"><g class="flow-note" transform="translate(651.731201171875,130)"><rect x="-21" y="-13" width="42" height="26" rx="5" fill="rgba(0,161,194,0.12)" stroke="#00A1C2" stroke-width="1.5"></rect>
     <text x="0" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#00A1C2">$5</text></g></g>
     </svg>
-    <div class="flow-controls">
-      <button class="flow-control-btn" id="flow-pause" title="Pause / Play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
-      <button class="flow-control-btn" id="flow-end" title="Skip to end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,4 13,12 3,20"/><polygon points="13,4 23,12 13,20"/></svg></button>
-      <button class="flow-control-btn" id="flow-clipboard" title="Copy screenshot to clipboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="4" y="4" width="16" height="18" rx="2"/></svg></button>
-      <button class="flow-control-btn" id="flow-download" title="Download screenshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
-    </div>
+  </div>
+  <div class="flow-controls">
+    <button class="flow-control-btn" id="flow-pause" title="Pause / Play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
+    <button class="flow-control-btn" id="flow-end" title="Skip to end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,4 13,12 3,20"/><polygon points="13,4 23,12 13,20"/></svg></button>
+    <button class="flow-control-btn" id="flow-clipboard" title="Copy screenshot to clipboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="4" y="4" width="16" height="18" rx="2"/></svg></button>
+    <button class="flow-control-btn" id="flow-download" title="Download screenshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
   </div>
 
   <div class="swimlane">
@@ -1676,24 +1673,32 @@ function animateExpand(section) {
 // ===== FLOW ANIMATION =====
 function getEntityPos() {
   const container = document.getElementById('flow-animation');
-  const rect = container.getBoundingClientRect();
+  const cRect = container.getBoundingClientRect();
   const entities = ['customer', 'ca', 'platform', 'stripe', 'ca2'];
   const pos = {};
   entities.forEach(id => {
     const el = document.getElementById('entity-' + id);
     if (!el || el.style.display === 'none') { pos[id] = { x: 0, y: 0 }; return; }
     const r = el.getBoundingClientRect();
-    pos[id] = { x: r.left + r.width / 2 - rect.left, y: r.top + r.height / 2 - rect.top };
+    pos[id] = { x: r.left + r.width / 2 - cRect.left, y: r.top + r.height / 2 - cRect.top };
   });
+  // Align Customer Y to the CA box center so arrows are on the same horizontal line
+  if (pos.ca && pos.customer) {
+    const caBox = document.getElementById('entity-ca');
+    if (caBox) {
+      const caR = caBox.getBoundingClientRect();
+      pos.customer.y = caR.top + caR.height / 2 - cRect.top;
+    }
+  }
   return pos;
 }
 let ENTITY_POS = { customer: {x:0,y:0}, ca: {x:0,y:0}, platform: {x:0,y:0}, stripe: {x:0,y:0}, ca2: {x:0,y:0} };
 
 const NOTE_COLORS = {
-  ca: { bg: 'rgba(0,161,194,0.12)', border: '#00A1C2', text: '#00A1C2' },
-  platform: { bg: 'rgba(255,97,24,0.12)', border: '#FF6118', text: '#FF6118' },
-  stripe: { bg: 'rgba(99,91,255,0.15)', border: '#635BFF', text: '#635BFF' },
-  customer: { bg: 'rgba(66,84,102,0.1)', border: '#425466', text: '#425466' }
+  ca: { bg: '#D9F3F8', border: '#00A1C2', text: '#00A1C2' },
+  platform: { bg: '#FFECE0', border: '#FF6118', text: '#FF6118' },
+  stripe: { bg: '#EEEDFF', border: '#635BFF', text: '#635BFF' },
+  customer: { bg: '#EBEEF1', border: '#425466', text: '#425466' }
 };
 
 function getFlowSteps() {
@@ -1745,7 +1750,7 @@ function isAdjacent(from, to) {
 function makePath(from, to) {
   const f = ENTITY_POS[from];
   const t = ENTITY_POS[to];
-  const boxW = 65, boxH = 48;
+  const boxW = 65, boxH = 50;
   const customerW = 25;
   const r = 12;
   let fx = f.x, fy = f.y, tx = t.x, ty = t.y;
@@ -1772,7 +1777,7 @@ function makePath(from, to) {
     tx = t.x;
     fy = f.y - boxH;
     ty = t.y - boxH;
-    const lane = Math.max(20, fy - (50 + pathLaneCounter * 18));
+    const lane = Math.max(45, fy - (50 + pathLaneCounter * 18));
     pathLaneCounter++;
     return `M${fx},${fy} L${fx},${lane + r} Q${fx},${lane} ${fx + r},${lane} L${tx - r},${lane} Q${tx},${lane} ${tx},${lane + r} L${tx},${ty}`;
   } else if (!goingRight && isAdjacent(from, to)) {
@@ -1876,7 +1881,7 @@ function clearFlow() {
   const container = document.getElementById('flow-animation');
   const isSCT = currentTab === 'sct' || currentTab === 'sct-obo';
   ca2.style.display = isSCT ? '' : 'none';
-  container.style.minHeight = isSCT ? '340px' : '';
+  container.style.minHeight = '';
 }
 
 function createNote(amount, color) {
@@ -1884,8 +1889,8 @@ function createNote(amount, color) {
   g.classList.add('flow-note');
   const c = NOTE_COLORS[color];
   const w = amount >= 100 ? 52 : 42;
-  g.innerHTML = `<rect x="${-w/2}" y="-13" width="${w}" height="26" rx="5" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5"/>
-    <text x="0" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="${c.text}">$${amount}</text>`;
+  g.innerHTML = `<rect x="${-w/2}" y="-14" width="${w}" height="28" rx="5" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5"/>
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700" fill="${c.text}">$${amount}</text>`;
   return g;
 }
 
@@ -1971,6 +1976,20 @@ async function runFlow() {
   const pathsG = document.getElementById('flow-paths');
   const notesG = document.getElementById('flow-notes');
 
+  // First pass: draw paths to measure visual bounds
+  pathLaneCounter = 0;
+  steps.forEach(step => {
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('d', makePath(step.from, step.to));
+    p.classList.add('flow-path');
+    p.setAttribute('marker-end', 'url(#arrowhead)');
+    pathsG.appendChild(p);
+  });
+
+  // Fit panel to visual content, then redraw paths with corrected dimensions
+  fitPanelToContent();
+  ENTITY_POS = getEntityPos();
+  pathsG.innerHTML = '';
   pathLaneCounter = 0;
   steps.forEach(step => {
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -2050,6 +2069,41 @@ async function runFlow() {
       if (flowRunning) { flowPaused = false; runFlow(); }
     }, 1500);
   }
+}
+
+function fitPanelToContent() {
+  const container = document.getElementById('flow-animation');
+  const grid = container.querySelector('.flow-grid');
+  const pathsG = document.getElementById('flow-paths');
+  const svg = document.getElementById('flow-svg');
+  if (!grid || !container) return;
+
+  const cRect = container.getBoundingClientRect();
+  const gridRect = grid.getBoundingClientRect();
+
+  let visualTop = gridRect.top - cRect.top;
+  let visualBottom = gridRect.bottom - cRect.top;
+
+  if (pathsG && pathsG.children.length > 0) {
+    const bbox = pathsG.getBBox();
+    visualTop = Math.min(visualTop, bbox.y - 16);
+    visualBottom = Math.max(visualBottom, bbox.y + bbox.height + 16);
+  }
+
+  const visualHeight = visualBottom - visualTop;
+  const margin = 20;
+  const totalHeight = visualHeight + margin * 2;
+  const newPaddingTop = margin - visualTop + 20;
+
+  container.style.minHeight = Math.max(totalHeight, 180) + 'px';
+  container.style.paddingTop = Math.max(newPaddingTop, 16) + 'px';
+  container.style.paddingBottom = margin + 'px';
+
+  const w = container.offsetWidth;
+  const h = container.offsetHeight;
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
 }
 
 // Start flow on load and restart on changes
@@ -2232,7 +2286,7 @@ requestAnimationFrame(() => {
     restartFlow();
   }
 });
-window.addEventListener('resize', () => renderAll());
+window.addEventListener('resize', () => { renderAll(); fitPanelToContent(); });
 
 // Flow controls
 document.getElementById('flow-pause').addEventListener('click', () => {
@@ -2252,9 +2306,7 @@ document.getElementById('flow-end').addEventListener('click', () => {
 async function captureFlowPanel() {
   const el = document.getElementById('flow-animation');
   if (typeof html2canvas === 'undefined') { alert('Screenshot library not loaded'); return null; }
-  const controls = el.querySelector('.flow-controls');
   const cog = el.querySelector('.settings-cog');
-  if (controls) controls.style.display = 'none';
   if (cog) cog.style.display = 'none';
   const allEls = [el, ...el.querySelectorAll('*')];
   const saved = allEls.map(e => e.getAttribute('style'));
@@ -2280,7 +2332,6 @@ async function captureFlowPanel() {
       if (saved[i] !== null) e.setAttribute('style', saved[i]);
       else e.removeAttribute('style');
     });
-    if (controls) controls.style.display = '';
     if (cog) cog.style.display = '';
   }
   return new Promise(resolve => canvas.toBlob(resolve));

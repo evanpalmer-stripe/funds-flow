@@ -220,6 +220,33 @@ h1 {
 .settings-cog:hover { color: var(--slate-500); background: var(--light-gray); }
 .settings-cog svg { width: 16px; height: 16px; }
 
+/* Animation controls */
+.flow-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+.flow-control-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--slate-300);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+  padding: 0;
+}
+.flow-control-btn:hover { color: var(--slate-500); background: var(--light-gray); }
+.flow-control-btn svg { width: 14px; height: 14px; }
+.flow-control-btn.active { color: var(--blurple); }
+
 /* Settings modal */
 .settings-overlay {
   display: none;
@@ -321,7 +348,7 @@ h1 {
   flex-direction: column;
   align-items: center;
   justify-self: end;
-  padding-right: 4px;
+  padding-right: 20px;
 }
 
 .flow-entity-label {
@@ -641,17 +668,18 @@ h1 {
   font-size: 13px;
   font-weight: 500;
   color: var(--dark-gray);
+  position: relative;
 }
 .doc-link {
   display: block;
   font-size: 11px;
-  color: var(--blurple);
+  color: var(--slate-300);
   text-decoration: none;
   font-weight: 500;
   text-align: right;
   margin-top: 2px;
 }
-.doc-link:hover { text-decoration: underline; }
+.doc-link:hover { color: var(--slate-500); text-decoration: underline; }
 
 /* Track spans all three columns */
 .swimlane-track {
@@ -792,6 +820,7 @@ h1 {
   .indicator { font-size: 10px; padding: 4px 10px; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 <body>
 <div class="container">
@@ -914,6 +943,12 @@ h1 {
       <g id="flow-notes"><g class="flow-note" transform="translate(651.731201171875,130)"><rect x="-21" y="-13" width="42" height="26" rx="5" fill="rgba(0,161,194,0.12)" stroke="#00A1C2" stroke-width="1.5"></rect>
     <text x="0" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#00A1C2">$5</text></g></g>
     </svg>
+    <div class="flow-controls">
+      <button class="flow-control-btn" id="flow-pause" title="Pause / Play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></button>
+      <button class="flow-control-btn" id="flow-end" title="Skip to end"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3,4 13,12 3,20"/><polygon points="13,4 23,12 13,20"/></svg></button>
+      <button class="flow-control-btn" id="flow-clipboard" title="Copy screenshot to clipboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="4" y="4" width="16" height="18" rx="2"/></svg></button>
+      <button class="flow-control-btn" id="flow-download" title="Download screenshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+    </div>
   </div>
 
   <div class="swimlane">
@@ -1457,7 +1492,6 @@ document.getElementById('ledger-toggle').addEventListener('click', () => {
     panel.classList.add('collapsed');
     toggle.classList.remove('expanded');
   }
-  updateHash();
 });
 
 // Flow animation collapse/expand
@@ -1696,7 +1730,6 @@ function makePath(from, to) {
   const f = ENTITY_POS[from];
   const t = ENTITY_POS[to];
   const boxW = 65, boxH = 48;
-  const customerW = 25;
   const r = 12;
   let fx = f.x, fy = f.y, tx = t.x, ty = t.y;
   const dx = t.x - f.x;
@@ -1713,8 +1746,8 @@ function makePath(from, to) {
     return `M${fx},${fy} L${fx},${midY - r} Q${fx},${midY} ${fx - r},${midY} L${tx},${midY}`;
   } else if (goingRight && isAdjacent(from, to)) {
     // Adjacent forward — straight horizontal line from side to side
-    fx = f.x + (from === 'customer' ? customerW : boxW);
-    tx = t.x - (to === 'customer' ? customerW : boxW);
+    fx = f.x + boxW;
+    tx = t.x - boxW;
     return `M${fx},${fy} L${tx},${ty}`;
   } else if (goingRight) {
     // Non-adjacent forward — top-to-top elbow above, capped to stay in bounds
@@ -1743,8 +1776,12 @@ function makePath(from, to) {
 }
 
 let flowTimeout = null;
+let flowTimeoutResolve = null;
 let flowRunning = false;
 let flowGeneration = 0;
+let flowPaused = false;
+let flowStepResolve = null;
+let flowSkipToEnd = false;
 const balances = { ca: 0, platform: 0, stripe: 0, ca2: 0 };
 
 const ledgerRows = [];
@@ -1875,9 +1912,36 @@ function pulseEntity(entityId) {
   setTimeout(() => el.classList.remove('pulse'), 400);
 }
 
+function applyStepInstant(step) {
+  updateBalance(step.from, -step.amount);
+  updateBalance(step.to, step.amount);
+  addLedgerEntry(step);
+}
+
+function skipToEnd() {
+  flowSkipToEnd = true;
+  if (flowStepResolve) { flowStepResolve(); flowStepResolve = null; }
+  if (flowTimeout) { clearTimeout(flowTimeout); flowTimeout = null; }
+  if (flowTimeoutResolve) { flowTimeoutResolve(); flowTimeoutResolve = null; }
+}
+
+function updatePauseIcon() {
+  const btn = document.getElementById('flow-pause');
+  if (flowPaused) {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6,4 20,12 6,20"/></svg>';
+    btn.classList.add('active');
+  } else {
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+    btn.classList.remove('active');
+  }
+}
+
 async function runFlow() {
   clearFlow();
   flowRunning = true;
+  flowPaused = false;
+  flowSkipToEnd = false;
+  updatePauseIcon();
   ENTITY_POS = getEntityPos();
   const svg = document.getElementById('flow-svg');
   const container = document.getElementById('flow-animation');
@@ -1890,7 +1954,6 @@ async function runFlow() {
   const pathsG = document.getElementById('flow-paths');
   const notesG = document.getElementById('flow-notes');
 
-  // Draw faint paths
   pathLaneCounter = 0;
   steps.forEach(step => {
     const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -1900,15 +1963,10 @@ async function runFlow() {
     pathsG.appendChild(p);
   });
 
-  // Animate steps
   let i = 0;
   while (i < steps.length && flowRunning) {
-    // Collect simultaneous group: only group steps that are marked simultaneous together
     const group = [steps[i]];
-    if (!steps[i].simultaneous) {
-      // This step plays alone; but peek ahead — if next steps are simultaneous, they form their own group next iteration
-    } else {
-      // This step starts a simultaneous group — collect all consecutive simultaneous steps
+    if (steps[i].simultaneous) {
       while (i + 1 < steps.length && steps[i + 1].simultaneous) {
         i++;
         group.push(steps[i]);
@@ -1917,16 +1975,30 @@ async function runFlow() {
 
     const gen = flowGeneration;
 
-    // Deduct from source balances
+    if (flowSkipToEnd) {
+      group.forEach(step => applyStepInstant(step));
+      i++;
+      continue;
+    }
+
+    if (flowPaused) {
+      await new Promise(r => { flowStepResolve = r; });
+      flowStepResolve = null;
+      if (flowGeneration !== gen || !flowRunning) return;
+      if (flowSkipToEnd) {
+        group.forEach(step => applyStepInstant(step));
+        i++;
+        continue;
+      }
+    }
+
     group.forEach(step => updateBalance(step.from, -step.amount));
 
-    // For simultaneous groups, use the longest path's duration so they arrive together
     const groupPaths = group.map(step => makePath(step.from, step.to));
     const groupDuration = group.length > 1
       ? Math.max(...groupPaths.map(p => getPathDuration(p)))
       : null;
 
-    // Animate group in parallel
     const promises = group.map((step, idx) => {
       const note = createNote(step.amount, step.color);
       notesG.appendChild(note);
@@ -1943,14 +2015,22 @@ async function runFlow() {
     if (flowGeneration !== gen) return;
 
     if (!flowRunning) return;
-    await new Promise(r => { flowTimeout = setTimeout(r, 1200); });
+
+    if (flowPaused) {
+      await new Promise(r => { flowStepResolve = r; });
+      flowStepResolve = null;
+      if (flowGeneration !== gen || !flowRunning) return;
+    } else {
+      await new Promise(r => { flowTimeoutResolve = r; flowTimeout = setTimeout(() => { flowTimeoutResolve = null; r(); }, 1200); });
+    }
     i++;
   }
 
-  // Loop after pause
-  if (flowRunning) {
+  flowPaused = true;
+  updatePauseIcon();
+  if (flowRunning && !flowSkipToEnd) {
     flowTimeout = setTimeout(() => {
-      if (flowRunning) runFlow();
+      if (flowRunning) { flowPaused = false; runFlow(); }
     }, 1500);
   }
 }
@@ -1975,7 +2055,6 @@ function updateHash() {
   params.set('revshare', revshareToggle);
   if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
   if (!animOpen) params.set('anim', 'closed');
-  if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
   window.history.replaceState(null, '', '#' + params.toString());
 }
 
@@ -2017,12 +2096,6 @@ function readHash() {
         summary.style.display = '';
       }
     });
-  }
-
-  // Ledger
-  if (params.get('ledger') === 'open') {
-    document.getElementById('ledger-panel').classList.remove('collapsed');
-    document.getElementById('ledger-toggle').classList.add('expanded');
   }
 
   // Animation
@@ -2124,6 +2197,71 @@ requestAnimationFrame(() => {
   }
 });
 window.addEventListener('resize', () => renderAll());
+
+// Flow controls
+document.getElementById('flow-pause').addEventListener('click', () => {
+  if (flowPaused && !flowStepResolve) {
+    restartFlow();
+    return;
+  }
+  flowPaused = !flowPaused;
+  updatePauseIcon();
+  if (!flowPaused && flowStepResolve) { flowStepResolve(); flowStepResolve = null; }
+});
+
+document.getElementById('flow-end').addEventListener('click', () => {
+  skipToEnd();
+});
+
+async function captureFlowPanel() {
+  const el = document.getElementById('flow-animation');
+  if (typeof html2canvas === 'undefined') { alert('Screenshot library not loaded'); return null; }
+  const allEls = [el, ...el.querySelectorAll('*')];
+  const saved = allEls.map(e => e.getAttribute('style'));
+  allEls.forEach(e => {
+    const cs = getComputedStyle(e);
+    e.style.color = cs.color;
+    e.style.backgroundColor = cs.backgroundColor;
+    e.style.borderColor = cs.borderColor;
+    e.style.borderTopColor = cs.borderTopColor;
+    e.style.borderBottomColor = cs.borderBottomColor;
+    e.style.borderLeftColor = cs.borderLeftColor;
+    e.style.borderRightColor = cs.borderRightColor;
+    e.style.boxShadow = cs.boxShadow;
+    e.style.opacity = '1';
+    e.style.transition = 'none';
+    e.style.animation = 'none';
+  });
+  let canvas;
+  try {
+    canvas = await html2canvas(el, { backgroundColor: '#FFFFFF', scale: 4, useCORS: true, logging: false });
+  } finally {
+    allEls.forEach((e, i) => {
+      if (saved[i] !== null) e.setAttribute('style', saved[i]);
+      else e.removeAttribute('style');
+    });
+  }
+  return new Promise(resolve => canvas.toBlob(resolve));
+}
+
+document.getElementById('flow-clipboard').addEventListener('click', async () => {
+  const blob = await captureFlowPanel();
+  if (!blob) return;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+  } catch(e) { alert('Could not copy to clipboard'); }
+});
+
+document.getElementById('flow-download').addEventListener('click', async () => {
+  const blob = await captureFlowPanel();
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fund-flow-' + currentTab + '.png';
+  a.click();
+  URL.revokeObjectURL(url);
+});
 </script>
 
 

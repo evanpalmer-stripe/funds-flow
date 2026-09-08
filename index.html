@@ -337,9 +337,16 @@ h1 {
   view-transition-name: flow-panel;
 }
 
-/* Coordinated morph on charge-type / toggle switches: the group animates the panel's
-   size while the old/new snapshots crossfade, all on one shared timeline. */
-::view-transition-group(flow-panel) {
+/* Coordinated morph on charge-type / toggle switches. The panel group animates its
+   height; each entity box is named individually so it GLIDES to its new grid position
+   (a true morph) rather than crossfading. All groups share one 300ms clock so the whole
+   thing reads as a single motion. */
+::view-transition-group(flow-panel),
+::view-transition-group(box-customer),
+::view-transition-group(box-ca),
+::view-transition-group(box-platform),
+::view-transition-group(box-stripe),
+::view-transition-group(box-ca2) {
   animation-duration: 300ms;
   animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
@@ -348,6 +355,24 @@ h1 {
   animation-duration: 300ms;
   animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
+
+/* The 2nd Connected Account box only exists on SCT tabs, so when SCT is entered/left it
+   has no counterpart to glide from. Give the solo side a scale+fade, delayed so it lands
+   after the row-1 boxes have finished gliding. */
+@keyframes ca2-in  { from { opacity: 0; transform: scale(0.9) translateY(6px); } }
+@keyframes ca2-out { to   { opacity: 0; transform: scale(0.9) translateY(6px); } }
+::view-transition-new(box-ca2):only-child {
+  animation: 260ms cubic-bezier(0.2, 0, 0, 1) 80ms both ca2-in;
+}
+::view-transition-old(box-ca2):only-child {
+  animation: 200ms cubic-bezier(0.4, 0, 1, 1) both ca2-out;
+}
+
+#entity-customer { view-transition-name: box-customer; }
+#entity-ca       { view-transition-name: box-ca; }
+#entity-platform { view-transition-name: box-platform; }
+#entity-stripe   { view-transition-name: box-stripe; }
+#entity-ca2      { view-transition-name: box-ca2; }
 
 .flow-stack {
   --elbow-clearance: 50px;
@@ -1990,7 +2015,7 @@ function updatePauseIcon() {
 // Split out from runFlow so it can run inside a View Transition callback (which
 // snapshots the resized "at rest" state) with the note animation deferred to after
 // the transition settles. Preserves the exact pathLaneCounter sequence runFlow relies on.
-function layoutFlow() {
+function layoutFlow(drawRails = true) {
   const svg = document.getElementById('flow-svg');
   const stack = document.getElementById('flow-stack');
   const grid = stack.querySelector('.flow-grid');
@@ -2003,6 +2028,14 @@ function layoutFlow() {
   svg.setAttribute('height', h);
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
   ENTITY_POS = getEntityPos();
+  if (drawRails) drawFlowRails();
+}
+
+// Draw the static rails for the current tab. Kept separate so the View Transition
+// callback can size/position the boxes WITHOUT drawing rails — the old rails then fade
+// out during the morph (they can't be point-morphed: different routes per tab) and the
+// new rails are drawn fresh once the morph settles.
+function drawFlowRails() {
   const steps = getFlowSteps();
   const pathsG = document.getElementById('flow-paths');
   pathLaneCounter = 0;
@@ -2109,9 +2142,11 @@ function restartFlow() {
     return;
   }
   const vt = document.startViewTransition(() => {
-    clearFlow();   // reset balances, toggle CA2, clear old rails (synchronous)
-    layoutFlow();  // resize panel + place entities + draw new rails → the "after" snapshot
+    clearFlow();        // reset balances, toggle CA2, clear old rails (synchronous)
+    layoutFlow(false);  // resize panel + place entities, but NO rails → they fade out during the morph
   });
+  // Draw the new rails and run the note animation only after the boxes have finished
+  // gliding into place — a clean morph → settle → rails → notes handoff.
   vt.finished.then(() => runFlow()).catch(() => runFlow());
 }
 

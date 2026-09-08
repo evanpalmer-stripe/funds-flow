@@ -1731,6 +1731,7 @@ function makePath(from, to) {
   const f = ENTITY_POS[from];
   const t = ENTITY_POS[to];
   const boxW = 65, boxH = 48;
+  const customerW = 25;
   const r = 12;
   let fx = f.x, fy = f.y, tx = t.x, ty = t.y;
   const dx = t.x - f.x;
@@ -1747,8 +1748,8 @@ function makePath(from, to) {
     return `M${fx},${fy} L${fx},${midY - r} Q${fx},${midY} ${fx - r},${midY} L${tx},${midY}`;
   } else if (goingRight && isAdjacent(from, to)) {
     // Adjacent forward — straight horizontal line from side to side
-    fx = f.x + boxW;
-    tx = t.x - boxW;
+    fx = f.x + (from === 'customer' ? customerW : boxW);
+    tx = t.x - (to === 'customer' ? customerW : boxW);
     return `M${fx},${fy} L${tx},${ty}`;
   } else if (goingRight) {
     // Non-adjacent forward — top-to-top elbow above, capped to stay in bounds

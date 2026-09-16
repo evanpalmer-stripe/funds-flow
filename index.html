@@ -296,6 +296,60 @@ h1 {
   transition: border-color 0.2s;
 }
 .settings-field input:focus { outline: none; border-color: var(--blurple); }
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 20px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--slate-200);
+}
+.settings-section-title:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+.settings-amount-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.settings-amount-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--slate-500);
+  margin: 0;
+}
+.settings-amount-input {
+  position: relative;
+  width: 92px;
+}
+.settings-amount-input .prefix {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--slate-500);
+  pointer-events: none;
+}
+.settings-amount-input input {
+  width: 100%;
+  padding: 7px 9px 7px 20px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--slate);
+  text-align: right;
+  transition: border-color 0.2s;
+}
+.settings-amount-input input:focus { outline: none; border-color: var(--blurple); }
+.settings-amount-hint {
+  font-size: 10.5px;
+  color: var(--slate-500);
+  margin: -4px 0 12px;
+  line-height: 1.4;
+}
 .settings-actions {
   display: flex;
   justify-content: space-between;
@@ -949,7 +1003,7 @@ h1 {
     <span class="flow-collapse-chevron" id="flow-chevron">▼</span>
   </div>
   <div class="flow-animation" id="flow-animation">
-    <button class="settings-cog" id="settings-cog" title="Rename labels">
+    <button class="settings-cog" id="settings-cog" title="Diagram settings">
       <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
     </button>
     <div class="flow-stack" id="flow-stack">
@@ -1123,7 +1177,8 @@ h1 {
   <!-- Settings Modal -->
   <div class="settings-overlay" id="settings-overlay">
     <div class="settings-modal">
-      <h3>Diagram Labels</h3>
+      <h3>Diagram Settings</h3>
+      <div class="settings-section-title">Labels</div>
       <div class="settings-field">
         <label>Customer</label>
         <input type="text" id="label-customer" maxlength="30">
@@ -1140,6 +1195,29 @@ h1 {
         <label>Connected Account 2</label>
         <input type="text" id="label-ca2" maxlength="30">
       </div>
+      <div class="settings-section-title">Amounts</div>
+      <div class="settings-amount-field">
+        <label>Payment</label>
+        <div class="settings-amount-input"><span class="prefix">$</span><input type="number" id="amt-payment" min="1" step="1"></div>
+      </div>
+      <div class="settings-amount-field">
+        <label>Platform fee</label>
+        <div class="settings-amount-input"><span class="prefix">$</span><input type="number" id="amt-platfee" min="0" step="1"></div>
+      </div>
+      <div class="settings-amount-field">
+        <label>Stripe fee</label>
+        <div class="settings-amount-input"><span class="prefix">$</span><input type="number" id="amt-stripefee" min="0" step="1"></div>
+      </div>
+      <div class="settings-amount-field">
+        <label>Rev. share</label>
+        <div class="settings-amount-input"><span class="prefix">$</span><input type="number" id="amt-revshare" min="0" step="1"></div>
+      </div>
+      <div class="settings-amount-hint">Rev. share applies to Direct charges with Stripe pricing and rev. share on.</div>
+      <div class="settings-amount-field">
+        <label>Split charge: first account</label>
+        <div class="settings-amount-input"><span class="prefix">$</span><input type="number" id="amt-sctca1" min="0" step="1"></div>
+      </div>
+      <div class="settings-amount-hint" id="amt-sctca2-hint">Second account receives the remainder (Payment − Platform fee).</div>
       <div class="settings-actions">
         <button class="settings-btn-reset" id="settings-reset">Reset</button>
         <button class="settings-btn-done" id="settings-done">Done</button>
@@ -1751,37 +1829,52 @@ const NOTE_COLORS = {
   customer: { bg: '#EBEEF1', border: '#425466', text: '#425466' }
 };
 
+// Resolve the working amounts for the current charge type, applying auto-balance
+// clamps so the flow always reconciles to the Payment total. amountState holds the
+// user-configured globals; connected-account transfers are derived here.
+function getAmounts() {
+  const payment = Math.max(1, amountState.payment);
+  const platfee = Math.min(Math.max(0, amountState.platfee), payment);
+  const stripefee = Math.min(Math.max(0, amountState.stripefee), payment);
+  const revshare = Math.max(0, amountState.revshare);
+  const distributable = Math.max(0, payment - platfee); // pool sent to connected account(s)
+  const sctca1 = Math.min(Math.max(0, amountState.sctca1), distributable);
+  const sctca2 = distributable - sctca1;                // second account gets the remainder
+  return { payment, platfee, stripefee, revshare, distributable, sctca1, sctca2 };
+}
+
 function getFlowSteps() {
   const tab = currentTab;
+  const a = getAmounts();
   if (tab === 'direct') {
     const steps = [
-      { from: 'customer', to: 'ca', amount: 100, color: 'customer', label: 'Payment' }
+      { from: 'customer', to: 'ca', amount: a.payment, color: 'customer', label: 'Payment' }
     ];
     if (pricingToggle === 'stripe') {
-      steps.push({ from: 'ca', to: 'platform', amount: 5, color: 'ca', label: 'Platform fee' });
-      steps.push({ from: 'ca', to: 'stripe', amount: 2, color: 'ca', label: 'Stripe fee' });
+      steps.push({ from: 'ca', to: 'platform', amount: a.platfee, color: 'ca', label: 'Platform fee' });
+      steps.push({ from: 'ca', to: 'stripe', amount: a.stripefee, color: 'ca', label: 'Stripe fee' });
     } else {
-      steps.push({ from: 'ca', to: 'platform', amount: 5, color: 'ca', label: 'Platform fee' });
-      steps.push({ from: 'platform', to: 'stripe', amount: 2, color: 'platform', label: 'Stripe fee' });
+      steps.push({ from: 'ca', to: 'platform', amount: a.platfee, color: 'ca', label: 'Platform fee' });
+      steps.push({ from: 'platform', to: 'stripe', amount: a.stripefee, color: 'platform', label: 'Stripe fee' });
     }
     if (revshareToggle === 'yes' && pricingToggle === 'stripe') {
-      steps.push({ from: 'stripe', to: 'platform', amount: 1, color: 'stripe', label: 'Rev. share' });
+      steps.push({ from: 'stripe', to: 'platform', amount: a.revshare, color: 'stripe', label: 'Rev. share' });
     }
     return steps;
   }
   if (tab === 'destination' || tab === 'destination-obo') {
     return [
-      { from: 'customer', to: 'platform', amount: 100, color: 'customer', label: 'Payment' },
-      { from: 'platform', to: 'ca', amount: 95, color: 'platform', simultaneous: true, label: 'Transfer' },
-      { from: 'platform', to: 'stripe', amount: 2, color: 'platform', simultaneous: true, label: 'Stripe fee' }
+      { from: 'customer', to: 'platform', amount: a.payment, color: 'customer', label: 'Payment' },
+      { from: 'platform', to: 'ca', amount: a.distributable, color: 'platform', simultaneous: true, label: 'Transfer' },
+      { from: 'platform', to: 'stripe', amount: a.stripefee, color: 'platform', simultaneous: true, label: 'Stripe fee' }
     ];
   }
   if (tab === 'sct' || tab === 'sct-obo') {
     return [
-      { from: 'customer', to: 'platform', amount: 100, color: 'customer', label: 'Payment' },
-      { from: 'platform', to: 'ca', amount: 50, color: 'platform', simultaneous: true, label: 'Transfer 1' },
-      { from: 'platform', to: 'ca2', amount: 45, color: 'platform', simultaneous: true, label: 'Transfer 2' },
-      { from: 'platform', to: 'stripe', amount: 2, color: 'platform', label: 'Stripe fee' }
+      { from: 'customer', to: 'platform', amount: a.payment, color: 'customer', label: 'Payment' },
+      { from: 'platform', to: 'ca', amount: a.sctca1, color: 'platform', simultaneous: true, label: 'Transfer 1' },
+      { from: 'platform', to: 'ca2', amount: a.sctca2, color: 'platform', simultaneous: true, label: 'Transfer 2' },
+      { from: 'platform', to: 'stripe', amount: a.stripefee, color: 'platform', label: 'Stripe fee' }
     ];
   }
   return [];
@@ -1905,8 +1998,9 @@ function addLedgerEntry(step) {
 
   // Verification
   const verify = document.getElementById('ledger-verify');
-  const stripeNet = 100 - caNet - platformNet;
-  verify.textContent = `$${caNet} + $${platformNet} + $${stripeNet} (Stripe) = $100`;
+  const payment = getAmounts().payment;
+  const stripeNet = payment - caNet - platformNet;
+  verify.textContent = `$${caNet} + $${platformNet} + $${stripeNet} (Stripe) = $${payment}`;
 }
 
 function updateBalance(entity, delta) {
@@ -2307,6 +2401,64 @@ function labelsFromHash() {
   });
 }
 
+// ===== AMOUNTS =====
+const AMOUNT_DEFAULTS = {
+  payment: 100,
+  platfee: 5,
+  stripefee: 2,
+  revshare: 1,
+  sctca1: 50
+};
+
+const amountState = { ...AMOUNT_DEFAULTS };
+
+const AMOUNT_INPUTS = {
+  payment: 'amt-payment',
+  platfee: 'amt-platfee',
+  stripefee: 'amt-stripefee',
+  revshare: 'amt-revshare',
+  sctca1: 'amt-sctca1'
+};
+
+function populateAmountInputs() {
+  Object.keys(AMOUNT_INPUTS).forEach(key => {
+    document.getElementById(AMOUNT_INPUTS[key]).value = amountState[key];
+  });
+}
+
+function readAmountInputs() {
+  Object.keys(AMOUNT_INPUTS).forEach(key => {
+    const raw = parseFloat(document.getElementById(AMOUNT_INPUTS[key]).value);
+    amountState[key] = Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : AMOUNT_DEFAULTS[key];
+  });
+  if (amountState.payment < 1) amountState.payment = 1;
+}
+
+function amountsToHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  Object.keys(AMOUNT_DEFAULTS).forEach(key => {
+    if (amountState[key] !== AMOUNT_DEFAULTS[key]) {
+      params.set('a_' + key, amountState[key]);
+    } else {
+      params.delete('a_' + key);
+    }
+  });
+  window.history.replaceState(null, '', '#' + params.toString());
+}
+
+function amountsFromHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  Object.keys(AMOUNT_DEFAULTS).forEach(key => {
+    if (params.has('a_' + key)) {
+      const val = parseFloat(params.get('a_' + key));
+      if (Number.isFinite(val) && val >= 0) amountState[key] = Math.round(val);
+    }
+  });
+  if (amountState.payment < 1) amountState.payment = 1;
+}
+
 // Modal controls
 const overlay = document.getElementById('settings-overlay');
 document.getElementById('settings-cog').addEventListener('click', () => {
@@ -2314,6 +2466,7 @@ document.getElementById('settings-cog').addEventListener('click', () => {
   document.getElementById('label-ca').value = labelState.ca;
   document.getElementById('label-platform').value = labelState.platform;
   document.getElementById('label-ca2').value = labelState.ca2;
+  populateAmountInputs();
   overlay.classList.add('visible');
 });
 
@@ -2322,9 +2475,12 @@ document.getElementById('settings-done').addEventListener('click', () => {
   labelState.ca = document.getElementById('label-ca').value.trim() || LABEL_DEFAULTS.ca;
   labelState.platform = document.getElementById('label-platform').value.trim() || LABEL_DEFAULTS.platform;
   labelState.ca2 = document.getElementById('label-ca2').value.trim() || LABEL_DEFAULTS.ca2;
+  readAmountInputs();
   applyLabels();
   labelsToHash();
+  amountsToHash();
   overlay.classList.remove('visible');
+  restartFlow();
 });
 
 document.getElementById('settings-reset').addEventListener('click', () => {
@@ -2333,8 +2489,12 @@ document.getElementById('settings-reset').addEventListener('click', () => {
   document.getElementById('label-ca').value = LABEL_DEFAULTS.ca;
   document.getElementById('label-platform').value = LABEL_DEFAULTS.platform;
   document.getElementById('label-ca2').value = LABEL_DEFAULTS.ca2;
+  Object.assign(amountState, AMOUNT_DEFAULTS);
+  populateAmountInputs();
   applyLabels();
   labelsToHash();
+  amountsToHash();
+  restartFlow();
 });
 
 overlay.addEventListener('click', (e) => {
@@ -2344,6 +2504,7 @@ overlay.addEventListener('click', (e) => {
 // Read state from URL on load
 readHash();
 labelsFromHash();
+amountsFromHash();
 
 // Initial render
 requestAnimationFrame(() => {
@@ -2370,35 +2531,117 @@ document.getElementById('flow-end').addEventListener('click', () => {
   skipToEnd();
 });
 
-// Render the fully-settled end state synchronously: every step applied (balances +
-// ledger complete), rails drawn and centred, no notes in flight. Used by the capture
-// path so a screenshot always shows the final state no matter when the button is pressed.
-function renderSettledFlow() {
-  clearFlow();                                     // stop the loop, reset balances, clear notes/paths
-  layoutFlow(true);                                // draw rails + centre content
-  getFlowSteps().forEach(step => applyStepInstant(step));
+// Build the fully-settled end state (all balances final, full ledger) directly onto a
+// DETACHED clone, computed from the step data — never touching the live panel. This is
+// what lets a capture leave the live animation exactly where it is (see captureFlowPanel).
+// It also forces the ledger expanded and stacks it BELOW the diagram, since the exported
+// image should always show the complete transcript under the picture.
+function settleClone(root, ledgerTopMargin) {
+  // Clear any in-flight banknotes; keep the static rails already drawn in the clone.
+  const notesG = root.querySelector('#flow-notes');
+  if (notesG) notesG.innerHTML = '';
+
+  // Final balances + full ledger, replicating updateBalance/addLedgerEntry over every step.
+  const bal = { ca: 0, platform: 0, stripe: 0, ca2: 0 };
+  const rows = [];
+  let caNetC = 0, platformNetC = 0;
+  getFlowSteps().forEach(step => {
+    if (step.from !== 'customer') bal[step.from] -= step.amount;
+    if (step.to !== 'customer') bal[step.to] += step.amount;
+    let caAmt = 0, platAmt = 0;
+    if (step.to === 'ca' || step.to === 'ca2') caAmt += step.amount;
+    if (step.to === 'platform') platAmt += step.amount;
+    if (step.from === 'ca' || step.from === 'ca2') caAmt -= step.amount;
+    if (step.from === 'platform') platAmt -= step.amount;
+    rows.push({ label: step.label, ca: caAmt, platform: platAmt });
+    caNetC += caAmt;
+    platformNetC += platAmt;
+  });
+
+  ['ca', 'platform', 'stripe', 'ca2'].forEach(id => {
+    const el = root.querySelector(`.flow-balance[data-entity="${id}"]`);
+    if (el) { el.textContent = '$' + bal[id]; el.classList.add('visible'); }
+  });
+
+  const body = root.querySelector('#ledger-body');
+  if (body) body.innerHTML = rows.map(r =>
+    `<tr><td>${r.label}</td><td>${formatAmount(r.ca)}</td><td>${formatAmount(r.platform)}</td></tr>`).join('');
+  const foot = root.querySelector('#ledger-foot');
+  if (foot) foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${formatAmount(caNetC)}</td><td>${formatAmount(platformNetC)}</td></tr>`;
+  const verify = root.querySelector('#ledger-verify');
+  if (verify) { const payment = getAmounts().payment; const stripeNet = payment - caNetC - platformNetC; verify.textContent = `$${caNetC} + $${platformNetC} + $${stripeNet} (Stripe) = $${payment}`; }
+
+  // Always expanded, stacked below the diagram (un-pin from the top-left overlay).
+  const panel = root.querySelector('#ledger-panel');
+  if (panel) { panel.classList.remove('collapsed'); panel.style.maxHeight = 'none'; panel.style.opacity = '1'; panel.style.overflow = 'visible'; }
+  const toggle = root.querySelector('#ledger-toggle');
+  if (toggle) toggle.classList.add('expanded');
+  const ledgerC = root.querySelector('.ledger-container');
+  if (ledgerC) { ledgerC.style.position = 'static'; ledgerC.style.marginTop = ledgerTopMargin + 'px'; ledgerC.style.marginLeft = '20px'; }
 }
 
 async function captureFlowPanel() {
   const el = document.getElementById('flow-animation');
   if (typeof html2canvas === 'undefined') { alert('Screenshot library not loaded'); return null; }
 
-  // Build the settled state on the live panel, snapshot it with a deep clone, then
-  // immediately restart the animation — all synchronously, so the browser never paints
-  // the settled frame (no visible flash). html2canvas then renders the off-screen clone,
-  // which the user never sees, while the live panel keeps looping normally.
+  // Clone the live panel as-is (whatever frame/pause state it's on) and settle the CLONE
+  // only. The live animation is never cleared, paused, or restarted by capturing — if it
+  // was running it keeps running seamlessly; if paused it stays paused at the same spot.
   const rect = el.getBoundingClientRect();
-  renderSettledFlow();
+  // The flow-stack reserves equal empty clearance above AND below the diagram boxes (the
+  // boxes are vertically centred on the live panel). The top band holds the elbow rail; the
+  // bottom band is just balancing space. Measure it so the ledger can be pulled up to sit
+  // ~12px under the boxes instead of after the full over-tall stack.
+  const liveStack = document.getElementById('flow-stack');
+  const liveGrid = liveStack ? liveStack.querySelector('.flow-grid') : null;
+  const spaceBelow = (liveStack && liveGrid) ? Math.max(0, (liveStack.offsetHeight - liveGrid.offsetHeight) / 2) : 0;
+  const ledgerTopMargin = Math.round(12 - spaceBelow);
+
+  // The diagram's first grid column is a wide empty reserve (on the live page the ledger
+  // overlay floats there). With the ledger stacked below, that reserve is dead space that
+  // shoves the diagram far right. Slide the WHOLE diagram left as a unit — boxes and rails
+  // move together (both live inside flow-stack), so the rails stay perfectly aligned — until
+  // the Customer sits at LEFT_MARGIN, then clip the now-empty right band via a tighter panel
+  // width. The stack keeps its original width so the grid never reflows and rails don't move.
+  const LEFT_MARGIN = 20, RIGHT_MARGIN = 24;
+  const originalStackW = liveStack ? liveStack.offsetWidth : rect.width;
+  const stackRect = liveStack ? liveStack.getBoundingClientRect() : null;
+  const custEl = document.getElementById('entity-customer');
+  const rightEls = ['entity-stripe', 'entity-platform', 'entity-ca', 'entity-ca2']
+    .map(id => document.getElementById(id))
+    .filter(e => e && e.style.display !== 'none');
+  let shiftX = 0, tightW = rect.width;
+  if (stackRect && custEl && rightEls.length) {
+    const custLeft = custEl.getBoundingClientRect().left - stackRect.left;
+    shiftX = Math.max(0, custLeft - LEFT_MARGIN);
+    const rightMost = Math.max(...rightEls.map(e => e.getBoundingClientRect().right - stackRect.left));
+    tightW = Math.round(rightMost - shiftX + RIGHT_MARGIN);
+  }
+
   const clone = el.cloneNode(true);
-  runFlow();  // resets the live panel to the start state and resumes looping, still this tick
+  settleClone(clone, ledgerTopMargin);
 
   clone.style.position = 'fixed';
   clone.style.left = '-100000px';
   clone.style.top = '0';
   clone.style.margin = '0';
   clone.style.boxSizing = 'border-box';
-  clone.style.width = rect.width + 'px';
+  clone.style.width = tightW + 'px';  // trimmed to the diagram, clipping the empty right band
+  clone.style.display = 'block';      // stack diagram + ledger vertically instead of side-by-side
+  clone.style.height = 'auto';
+  clone.style.minHeight = '0';
+  clone.style.overflow = 'hidden';    // clip the diagram's over-wide right edge after the shift
+  clone.style.paddingTop = '28px';    // headroom so the top elbow rail isn't clipped
+  clone.style.paddingBottom = '20px';
   clone.style.viewTransitionName = 'none';  // avoid duplicate VT name with the live panel
+
+  // Slide the diagram (boxes + rails together) left, preserving the vertical centring transform.
+  const cloneStack = clone.querySelector('#flow-stack');
+  if (cloneStack) {
+    cloneStack.style.width = originalStackW + 'px';  // pin so the grid can't reflow when the panel narrows
+    const existingTransform = liveStack && liveStack.style.transform ? liveStack.style.transform : '';
+    cloneStack.style.transform = `translateX(${-shiftX}px) ${existingTransform}`.trim();
+  }
   document.body.appendChild(clone);
 
   const cog = clone.querySelector('.settings-cog');

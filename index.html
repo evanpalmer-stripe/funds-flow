@@ -350,6 +350,72 @@ h1 {
   margin: -4px 0 12px;
   line-height: 1.4;
 }
+/* Currency country picker (custom dropdown) */
+.cur-picker { position: relative; }
+.cur-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1.5px solid var(--slate-200);
+  border-radius: 6px;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--slate);
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cur-trigger:hover { border-color: var(--slate-500); }
+.cur-picker.open .cur-trigger { border-color: var(--blurple); box-shadow: 0 0 0 3px rgba(99,91,255,0.12); }
+.cur-trigger-flag { font-size: 18px; line-height: 1; }
+.cur-trigger-name { flex: 1; text-align: left; font-weight: 600; }
+.cur-trigger-code { color: var(--slate-500); font-weight: 600; letter-spacing: 0.4px; }
+.cur-caret { color: var(--slate-500); font-size: 11px; transition: transform 0.2s; }
+.cur-picker.open .cur-caret { transform: rotate(180deg); }
+.cur-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 232px;
+  overflow-y: auto;
+  background: var(--white);
+  border: 1px solid var(--slate-200);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(10,37,64,0.16);
+  z-index: 20;
+  padding: 5px;
+}
+.cur-picker.open .cur-menu { display: block; }
+.cur-opt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--slate);
+}
+.cur-opt:hover { background: var(--light-gray); }
+.cur-opt.selected { background: rgba(99,91,255,0.08); }
+.cur-opt-flag { font-size: 18px; line-height: 1; }
+.cur-opt-name { flex: 1; font-weight: 600; }
+.cur-opt-code { color: var(--slate-500); font-weight: 600; font-size: 12px; letter-spacing: 0.4px; }
+.cur-opt-check { color: var(--blurple); font-weight: 700; visibility: hidden; }
+.cur-opt.selected .cur-opt-check { visibility: visible; }
+.cur-preview {
+  font-size: 11px;
+  color: var(--slate-500);
+  margin: 8px 0 4px;
+}
+.cur-preview b { color: var(--slate); font-weight: 700; }
+/* Suffix-placement currencies show the symbol to the right of the input */
+.settings-amount-input.suffix input { padding: 7px 22px 7px 9px; }
+.settings-amount-input.suffix .prefix { left: auto; right: 9px; }
 .settings-actions {
   display: flex;
   justify-content: space-between;
@@ -1196,6 +1262,19 @@ h1 {
         <input type="text" id="label-ca2" maxlength="30">
       </div>
       <div class="settings-section-title">Amounts</div>
+      <div class="settings-field">
+        <label>Currency</label>
+        <div class="cur-picker" id="cur-picker">
+          <button type="button" class="cur-trigger" id="cur-trigger" aria-haspopup="listbox" aria-expanded="false">
+            <span class="cur-trigger-flag" id="cur-trigger-flag">🇺🇸</span>
+            <span class="cur-trigger-name" id="cur-trigger-name">United States</span>
+            <span class="cur-trigger-code" id="cur-trigger-code">USD</span>
+            <span class="cur-caret">▾</span>
+          </button>
+          <div class="cur-menu" id="cur-menu" role="listbox"></div>
+        </div>
+        <div class="cur-preview" id="cur-preview">Preview: $1,234.56</div>
+      </div>
       <div class="settings-amount-field">
         <label>Payment</label>
         <div class="settings-amount-input"><span class="prefix">$</span><input type="number" id="amt-payment" min="1" step="1"></div>
@@ -1957,7 +2036,7 @@ function resetBalances() {
   ['ca', 'platform', 'stripe', 'ca2'].forEach(id => {
     balances[id] = 0;
     const el = document.querySelector(`.flow-balance[data-entity="${id}"]`);
-    if (el) { el.textContent = '$0'; el.classList.remove('visible'); }
+    if (el) { el.textContent = fmtCur(0); el.classList.remove('visible'); }
   });
   ledgerRows.length = 0;
   caNet = 0;
@@ -1971,8 +2050,7 @@ function resetBalances() {
 }
 
 function formatAmount(n) {
-  if (n === 0) return '';
-  return (n > 0 ? '+' : '-') + '$' + Math.abs(n);
+  return fmtCurSigned(n);
 }
 
 function addLedgerEntry(step) {
@@ -2000,7 +2078,7 @@ function addLedgerEntry(step) {
   const verify = document.getElementById('ledger-verify');
   const payment = getAmounts().payment;
   const stripeNet = payment - caNet - platformNet;
-  verify.textContent = `$${caNet} + $${platformNet} + $${stripeNet} (Stripe) = $${payment}`;
+  verify.textContent = `${fmtCur(caNet)} + ${fmtCur(platformNet)} + ${fmtCur(stripeNet)} (Stripe) = ${fmtCur(payment)}`;
 }
 
 function updateBalance(entity, delta) {
@@ -2008,7 +2086,7 @@ function updateBalance(entity, delta) {
   balances[entity] += delta;
   const el = document.querySelector(`.flow-balance[data-entity="${entity}"]`);
   if (el) {
-    el.textContent = '$' + balances[entity];
+    el.textContent = fmtCur(balances[entity]);
     el.classList.add('visible');
   }
 }
@@ -2034,9 +2112,10 @@ function createNote(amount, color) {
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   g.classList.add('flow-note');
   const c = NOTE_COLORS[color];
-  const w = amount >= 100 ? 52 : 42;
+  const label = fmtCur(amount);
+  const w = Math.max(42, Math.round(label.length * 7.2) + 18); // size the pill to the formatted label
   g.innerHTML = `<rect x="${-w/2}" y="-14" width="${w}" height="28" rx="5" fill="${c.bg}" stroke="${c.border}" stroke-width="1.5"/>
-    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700" fill="${c.text}">$${amount}</text>`;
+    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700" fill="${c.text}">${label}</text>`;
   return g;
 }
 
@@ -2429,7 +2508,7 @@ function populateAmountInputs() {
 function readAmountInputs() {
   Object.keys(AMOUNT_INPUTS).forEach(key => {
     const raw = parseFloat(document.getElementById(AMOUNT_INPUTS[key]).value);
-    amountState[key] = Number.isFinite(raw) && raw >= 0 ? Math.round(raw) : AMOUNT_DEFAULTS[key];
+    amountState[key] = Number.isFinite(raw) && raw >= 0 ? roundMoney(raw) : AMOUNT_DEFAULTS[key];
   });
   if (amountState.payment < 1) amountState.payment = 1;
 }
@@ -2453,10 +2532,131 @@ function amountsFromHash() {
   Object.keys(AMOUNT_DEFAULTS).forEach(key => {
     if (params.has('a_' + key)) {
       const val = parseFloat(params.get('a_' + key));
-      if (Number.isFinite(val) && val >= 0) amountState[key] = Math.round(val);
+      if (Number.isFinite(val) && val >= 0) amountState[key] = roundMoney(val);
     }
   });
   if (amountState.payment < 1) amountState.payment = 1;
+}
+
+// ===== CURRENCY =====
+// A "country" picker: each entry maps a country (flag + name) to a locale + ISO currency.
+// All money formatting goes through Intl.NumberFormat with that locale/currency, so symbol,
+// prefix/suffix placement, decimal count, and comma-vs-period separators are all correct and
+// native — no per-currency formatting rules hardcoded here. Selecting a currency never
+// converts the numbers; it only changes how the same amount is rendered.
+const CURRENCIES = [
+  { id: 'us', flag: '🇺🇸', country: 'United States', locale: 'en-US', currency: 'USD' },
+  { id: 'au', flag: '🇦🇺', country: 'Australia',     locale: 'en-AU', currency: 'AUD' },
+  { id: 'ca', flag: '🇨🇦', country: 'Canada',        locale: 'en-CA', currency: 'CAD' },
+  { id: 'gb', flag: '🇬🇧', country: 'United Kingdom', locale: 'en-GB', currency: 'GBP' },
+  { id: 'ie', flag: '🇮🇪', country: 'Ireland (EUR)',  locale: 'en-IE', currency: 'EUR' },
+  { id: 'de', flag: '🇩🇪', country: 'Germany (EUR)',  locale: 'de-DE', currency: 'EUR' },
+  { id: 'fr', flag: '🇫🇷', country: 'France (EUR)',   locale: 'fr-FR', currency: 'EUR' },
+  { id: 'jp', flag: '🇯🇵', country: 'Japan',          locale: 'ja-JP', currency: 'JPY' },
+  { id: 'cn', flag: '🇨🇳', country: 'China',          locale: 'zh-CN', currency: 'CNY' },
+  { id: 'in', flag: '🇮🇳', country: 'India',          locale: 'en-IN', currency: 'INR' },
+  { id: 'sg', flag: '🇸🇬', country: 'Singapore',      locale: 'en-SG', currency: 'SGD' },
+  { id: 'br', flag: '🇧🇷', country: 'Brazil',         locale: 'pt-BR', currency: 'BRL' },
+  { id: 'kr', flag: '🇰🇷', country: 'South Korea',    locale: 'ko-KR', currency: 'KRW' }
+];
+const CURRENCY_DEFAULT = 'us';
+let currencyState = CURRENCY_DEFAULT;
+
+function curDef() {
+  return CURRENCIES.find(c => c.id === currencyState) || CURRENCIES[0];
+}
+function curNumberFormat(opts) {
+  const d = curDef();
+  return new Intl.NumberFormat(d.locale, { style: 'currency', currency: d.currency, currencyDisplay: 'narrowSymbol', ...opts });
+}
+// Number of fraction digits this currency uses (0 for JPY/KRW, 2 for most).
+function curDecimals() {
+  return curNumberFormat().resolvedOptions().maximumFractionDigits;
+}
+// The bare currency symbol and whether it sits after the number (suffix) for this locale.
+function curSymbolInfo() {
+  const parts = curNumberFormat().formatToParts(0);
+  const ci = parts.findIndex(p => p.type === 'currency');
+  const ni = parts.findIndex(p => p.type === 'integer');
+  return { symbol: ci >= 0 ? parts[ci].value : '', suffix: ci > ni };
+}
+// Plain formatted value (keeps a natural minus sign for negatives). Balances, verify line.
+function fmtCur(n) {
+  return curNumberFormat().format(n);
+}
+// Signed formatted value for ledger rows (+/-), empty string for zero.
+function fmtCurSigned(n) {
+  if (n === 0) return '';
+  return curNumberFormat({ signDisplay: 'exceptZero' }).format(n);
+}
+// Round a raw amount to the current currency's precision (e.g. whole yen, cents for USD).
+function roundMoney(n) {
+  const f = Math.pow(10, curDecimals());
+  return Math.round(n * f) / f;
+}
+
+function currencyToHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  if (currencyState !== CURRENCY_DEFAULT) params.set('cur', currencyState);
+  else params.delete('cur');
+  window.history.replaceState(null, '', '#' + params.toString());
+}
+function currencyFromHash() {
+  const hash = window.location.hash.slice(1);
+  const params = new URLSearchParams(hash);
+  if (params.has('cur') && CURRENCIES.some(c => c.id === params.get('cur'))) {
+    currencyState = params.get('cur');
+  }
+}
+
+// ----- Currency picker (custom dropdown) -----
+const curPicker = document.getElementById('cur-picker');
+const curTrigger = document.getElementById('cur-trigger');
+const curMenu = document.getElementById('cur-menu');
+let curDraft = currencyState; // pending selection while the modal is open; committed on Done
+
+CURRENCIES.forEach(c => {
+  const opt = document.createElement('div');
+  opt.className = 'cur-opt';
+  opt.dataset.id = c.id;
+  opt.setAttribute('role', 'option');
+  opt.innerHTML = `<span class="cur-opt-flag">${c.flag}</span><span class="cur-opt-name">${c.country}</span><span class="cur-opt-code">${c.currency}</span><span class="cur-opt-check">✓</span>`;
+  opt.addEventListener('click', () => { curDraft = c.id; syncCurrencyUI(); closeCurMenu(); });
+  curMenu.appendChild(opt);
+});
+
+function openCurMenu() { curPicker.classList.add('open'); curTrigger.setAttribute('aria-expanded', 'true'); }
+function closeCurMenu() { curPicker.classList.remove('open'); curTrigger.setAttribute('aria-expanded', 'false'); }
+curTrigger.addEventListener('click', (e) => {
+  e.stopPropagation();
+  curPicker.classList.contains('open') ? closeCurMenu() : openCurMenu();
+});
+document.addEventListener('click', (e) => { if (!curPicker.contains(e.target)) closeCurMenu(); });
+
+// Reflect the draft currency in the trigger, menu tick, preview, and the amount-input
+// adornments (symbol, prefix/suffix placement, decimal step) — all from Intl for the draft locale.
+function syncCurrencyUI() {
+  const d = CURRENCIES.find(c => c.id === curDraft) || CURRENCIES[0];
+  const nf = new Intl.NumberFormat(d.locale, { style: 'currency', currency: d.currency, currencyDisplay: 'narrowSymbol' });
+  document.getElementById('cur-trigger-flag').textContent = d.flag;
+  document.getElementById('cur-trigger-name').textContent = d.country;
+  document.getElementById('cur-trigger-code').textContent = d.currency;
+  curMenu.querySelectorAll('.cur-opt').forEach(o => o.classList.toggle('selected', o.dataset.id === curDraft));
+  document.getElementById('cur-preview').innerHTML = 'Preview: <b>' + nf.format(1234.56) + '</b>';
+  const parts = nf.formatToParts(0);
+  const ci = parts.findIndex(p => p.type === 'currency');
+  const ni = parts.findIndex(p => p.type === 'integer');
+  const symbol = ci >= 0 ? parts[ci].value : '';
+  const suffix = ci > ni;
+  const decimals = nf.resolvedOptions().maximumFractionDigits;
+  Object.values(AMOUNT_INPUTS).forEach(inputId => {
+    const input = document.getElementById(inputId);
+    const wrap = input.closest('.settings-amount-input');
+    wrap.querySelector('.prefix').textContent = symbol;
+    wrap.classList.toggle('suffix', suffix);
+    input.step = decimals > 0 ? '0.01' : '1';
+  });
 }
 
 // Modal controls
@@ -2466,6 +2666,8 @@ document.getElementById('settings-cog').addEventListener('click', () => {
   document.getElementById('label-ca').value = labelState.ca;
   document.getElementById('label-platform').value = labelState.platform;
   document.getElementById('label-ca2').value = labelState.ca2;
+  curDraft = currencyState;
+  syncCurrencyUI();
   populateAmountInputs();
   overlay.classList.add('visible');
 });
@@ -2475,10 +2677,13 @@ document.getElementById('settings-done').addEventListener('click', () => {
   labelState.ca = document.getElementById('label-ca').value.trim() || LABEL_DEFAULTS.ca;
   labelState.platform = document.getElementById('label-platform').value.trim() || LABEL_DEFAULTS.platform;
   labelState.ca2 = document.getElementById('label-ca2').value.trim() || LABEL_DEFAULTS.ca2;
+  currencyState = curDraft; // commit currency before reading amounts so rounding uses its decimals
   readAmountInputs();
   applyLabels();
   labelsToHash();
   amountsToHash();
+  currencyToHash();
+  closeCurMenu();
   overlay.classList.remove('visible');
   restartFlow();
 });
@@ -2489,11 +2694,15 @@ document.getElementById('settings-reset').addEventListener('click', () => {
   document.getElementById('label-ca').value = LABEL_DEFAULTS.ca;
   document.getElementById('label-platform').value = LABEL_DEFAULTS.platform;
   document.getElementById('label-ca2').value = LABEL_DEFAULTS.ca2;
+  currencyState = CURRENCY_DEFAULT;
+  curDraft = CURRENCY_DEFAULT;
+  syncCurrencyUI();
   Object.assign(amountState, AMOUNT_DEFAULTS);
   populateAmountInputs();
   applyLabels();
   labelsToHash();
   amountsToHash();
+  currencyToHash();
   restartFlow();
 });
 
@@ -2504,7 +2713,10 @@ overlay.addEventListener('click', (e) => {
 // Read state from URL on load
 readHash();
 labelsFromHash();
+currencyFromHash(); // before amounts so roundMoney uses the loaded currency's decimals
 amountsFromHash();
+curDraft = currencyState;
+syncCurrencyUI();
 
 // Initial render
 requestAnimationFrame(() => {
@@ -2560,7 +2772,7 @@ function settleClone(root, ledgerTopMargin) {
 
   ['ca', 'platform', 'stripe', 'ca2'].forEach(id => {
     const el = root.querySelector(`.flow-balance[data-entity="${id}"]`);
-    if (el) { el.textContent = '$' + bal[id]; el.classList.add('visible'); }
+    if (el) { el.textContent = fmtCur(bal[id]); el.classList.add('visible'); }
   });
 
   const body = root.querySelector('#ledger-body');
@@ -2569,7 +2781,7 @@ function settleClone(root, ledgerTopMargin) {
   const foot = root.querySelector('#ledger-foot');
   if (foot) foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${formatAmount(caNetC)}</td><td>${formatAmount(platformNetC)}</td></tr>`;
   const verify = root.querySelector('#ledger-verify');
-  if (verify) { const payment = getAmounts().payment; const stripeNet = payment - caNetC - platformNetC; verify.textContent = `$${caNetC} + $${platformNetC} + $${stripeNet} (Stripe) = $${payment}`; }
+  if (verify) { const payment = getAmounts().payment; const stripeNet = payment - caNetC - platformNetC; verify.textContent = `${fmtCur(caNetC)} + ${fmtCur(platformNetC)} + ${fmtCur(stripeNet)} (Stripe) = ${fmtCur(payment)}`; }
 
   // Always expanded, stacked below the diagram (un-pin from the top-left overlay).
   const panel = root.querySelector('#ledger-panel');

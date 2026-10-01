@@ -2127,12 +2127,30 @@ function resetBalances() {
   if (verify) verify.textContent = '';
 }
 
+// Shared ledger helpers — used by both the live incremental ledger (addLedgerEntry)
+// and the batch-settled export clone (settleClone). Keep the two callers in sync by
+// routing all per-row/footer/verify formatting through these pure functions.
+function ledgerDeltas(step) {
+  let ca = 0, platform = 0;
+  if (step.to === 'ca' || step.to === 'ca2') ca += step.amount;
+  if (step.to === 'platform') platform += step.amount;
+  if (step.from === 'ca' || step.from === 'ca2') ca -= step.amount;
+  if (step.from === 'platform') platform -= step.amount;
+  return { ca, platform };
+}
+function ledgerRowCells(label, ca, platform) {
+  return `<td>${label}</td><td>${fmtCurSigned(ca)}</td><td>${fmtCurSigned(platform)}</td>`;
+}
+function ledgerFootHtml(caNetVal, platformNetVal) {
+  return `<tr class="ledger-net"><td>Net</td><td>${fmtCurSigned(caNetVal)}</td><td>${fmtCurSigned(platformNetVal)}</td></tr>`;
+}
+function ledgerVerifyText(caNetVal, platformNetVal, payment) {
+  const stripeNet = payment - caNetVal - platformNetVal;
+  return `${fmtCur(caNetVal)} + ${fmtCur(platformNetVal)} + ${fmtCur(stripeNet)} (Stripe) = ${fmtCur(payment)}`;
+}
+
 function addLedgerEntry(step) {
-  let caAmt = 0, platAmt = 0;
-  if (step.to === 'ca' || step.to === 'ca2') caAmt += step.amount;
-  if (step.to === 'platform') platAmt += step.amount;
-  if (step.from === 'ca' || step.from === 'ca2') caAmt -= step.amount;
-  if (step.from === 'platform') platAmt -= step.amount;
+  const { ca: caAmt, platform: platAmt } = ledgerDeltas(step);
 
   ledgerRows.push({ label: step.label, ca: caAmt, platform: platAmt });
   caNet += caAmt;
@@ -2141,18 +2159,16 @@ function addLedgerEntry(step) {
   // Render
   const body = document.getElementById('ledger-body');
   const row = document.createElement('tr');
-  row.innerHTML = `<td>${step.label}</td><td>${fmtCurSigned(caAmt)}</td><td>${fmtCurSigned(platAmt)}</td>`;
+  row.innerHTML = ledgerRowCells(step.label, caAmt, platAmt);
   body.appendChild(row);
 
   // Update footer
   const foot = document.getElementById('ledger-foot');
-  foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${fmtCurSigned(caNet)}</td><td>${fmtCurSigned(platformNet)}</td></tr>`;
+  foot.innerHTML = ledgerFootHtml(caNet, platformNet);
 
   // Verification
   const verify = document.getElementById('ledger-verify');
-  const payment = getAmounts().payment;
-  const stripeNet = payment - caNet - platformNet;
-  verify.textContent = `${fmtCur(caNet)} + ${fmtCur(platformNet)} + ${fmtCur(stripeNet)} (Stripe) = ${fmtCur(payment)}`;
+  verify.textContent = ledgerVerifyText(caNet, platformNet, getAmounts().payment);
 }
 
 function updateBalance(entity, delta) {
@@ -2853,11 +2869,7 @@ function settleClone(root, ledgerTopMargin) {
   getFlowSteps().forEach(step => {
     if (step.from !== 'customer') bal[step.from] -= step.amount;
     if (step.to !== 'customer') bal[step.to] += step.amount;
-    let caAmt = 0, platAmt = 0;
-    if (step.to === 'ca' || step.to === 'ca2') caAmt += step.amount;
-    if (step.to === 'platform') platAmt += step.amount;
-    if (step.from === 'ca' || step.from === 'ca2') caAmt -= step.amount;
-    if (step.from === 'platform') platAmt -= step.amount;
+    const { ca: caAmt, platform: platAmt } = ledgerDeltas(step);
     rows.push({ label: step.label, ca: caAmt, platform: platAmt });
     caNetC += caAmt;
     platformNetC += platAmt;
@@ -2869,12 +2881,11 @@ function settleClone(root, ledgerTopMargin) {
   });
 
   const body = root.querySelector('#ledger-body');
-  if (body) body.innerHTML = rows.map(r =>
-    `<tr><td>${r.label}</td><td>${fmtCurSigned(r.ca)}</td><td>${fmtCurSigned(r.platform)}</td></tr>`).join('');
+  if (body) body.innerHTML = rows.map(r => `<tr>${ledgerRowCells(r.label, r.ca, r.platform)}</tr>`).join('');
   const foot = root.querySelector('#ledger-foot');
-  if (foot) foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${fmtCurSigned(caNetC)}</td><td>${fmtCurSigned(platformNetC)}</td></tr>`;
+  if (foot) foot.innerHTML = ledgerFootHtml(caNetC, platformNetC);
   const verify = root.querySelector('#ledger-verify');
-  if (verify) { const payment = getAmounts().payment; const stripeNet = payment - caNetC - platformNetC; verify.textContent = `${fmtCur(caNetC)} + ${fmtCur(platformNetC)} + ${fmtCur(stripeNet)} (Stripe) = ${fmtCur(payment)}`; }
+  if (verify) verify.textContent = ledgerVerifyText(caNetC, platformNetC, getAmounts().payment);
 
   // Always expanded, stacked below the diagram (un-pin from the top-left overlay).
   const panel = root.querySelector('#ledger-panel');

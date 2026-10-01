@@ -17,6 +17,7 @@
   --card-shadow: 0 4px 14px rgba(10,37,64,0.08);
   --radius-panel: 12px;
   --radius-row: 8px;
+  --col-first: 380px; /* swimlane first-column width; JS pill math reads this too */
   --platform-color: #FF6118;
   --ca-color: #00A1C2;
   --hybrid-color: #E8356D;
@@ -189,7 +190,7 @@ h1 {
 
 .swimlane-header {
   display: grid;
-  grid-template-columns: 380px 1fr 1fr 1fr;
+  grid-template-columns: var(--col-first) 1fr 1fr 1fr;
   border-bottom: 2px solid var(--slate-200);
 }
 
@@ -563,7 +564,7 @@ h1 {
   grid-area: 1 / 1;
   align-self: center;
   display: grid;
-  grid-template-columns: 380px 1fr 1fr 1fr;
+  grid-template-columns: var(--col-first) 1fr 1fr 1fr;
   align-items: center;
   justify-items: center;
   row-gap: 16px;
@@ -809,7 +810,7 @@ h1 {
 
 .swimlane-row {
   display: grid;
-  grid-template-columns: 380px 1fr 1fr 1fr;
+  grid-template-columns: var(--col-first) 1fr 1fr 1fr;
   border-bottom: 1px solid var(--slate-200);
   align-items: center;
   min-height: 52px;
@@ -823,7 +824,7 @@ h1 {
 
 .section-heading {
   display: grid;
-  grid-template-columns: 380px 1fr 1fr 1fr;
+  grid-template-columns: var(--col-first) 1fr 1fr 1fr;
   border-bottom: 1px solid var(--slate-200);
   border-top: 1px solid var(--slate-200);
   background: var(--light-gray);
@@ -854,7 +855,7 @@ h1 {
 
 .section-summary {
   display: grid;
-  grid-template-columns: 380px 1fr 1fr 1fr;
+  grid-template-columns: var(--col-first) 1fr 1fr 1fr;
   align-items: center;
   min-height: 40px;
   border-bottom: 1px solid var(--slate-200);
@@ -1569,12 +1570,14 @@ let pricingToggle = 'stripe';
 let revshareToggle = 'yes';
 let showExplanations = false;
 
+// Swimlane first-column width in px — single source of truth is the --col-first CSS var.
+const FIRST_COL = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--col-first'), 10) || 380;
+
 function getColOffset(col) {
   const header = document.querySelector('.swimlane-header');
   if (!header) return 0;
   const headerWidth = header.offsetWidth;
-  const firstCol = 380;
-  const trackWidth = headerWidth - firstCol;
+  const trackWidth = headerWidth - FIRST_COL;
   const third = trackWidth / 3;
   if (col === 'ca') return 0;
   if (col === 'platform') return third;
@@ -1585,8 +1588,7 @@ function getColOffset(col) {
 function getColWidth() {
   const header = document.querySelector('.swimlane-header');
   if (!header) return 200;
-  const firstCol = 380;
-  return (header.offsetWidth - firstCol) / 3;
+  return (header.offsetWidth - FIRST_COL) / 3;
 }
 
 function fitPillToColumn(pill) {

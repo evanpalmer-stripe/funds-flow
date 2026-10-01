@@ -2425,33 +2425,43 @@ function restartFlow() {
 }
 
 // ===== URL STATE =====
-function updateHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
-  const expandedSections = [];
-  document.querySelectorAll('.section-heading:not(.collapsed)').forEach(h => {
-    expandedSections.push(h.dataset.section);
-  });
-  const animOpen = !document.getElementById('flow-collapse-bar').classList.contains('collapsed');
-  params.set('tab', currentTab);
-  params.set('risk', riskToggle);
-  params.set('fees', pricingToggle === 'stripe' ? 'ca' : 'platform');
-  params.set('revshare', revshareToggle);
-  if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
-  else params.delete('sections');
-  if (!animOpen) params.set('anim', 'closed');
-  else params.delete('anim');
-  if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
-  else params.delete('ledger');
-  if (showExplanations) params.set('explain', 'open');
-  else params.delete('explain');
+// Parse the current URL hash into a params object.
+function readHashParams() {
+  return new URLSearchParams(window.location.hash.slice(1));
+}
+
+// Read the hash, let `mutator` apply its key changes, then write it back (no new history entry).
+function mutateHash(mutator) {
+  const params = readHashParams();
+  mutator(params);
   window.history.replaceState(null, '', '#' + params.toString());
 }
 
+function updateHash() {
+  mutateHash(params => {
+    const expandedSections = [];
+    document.querySelectorAll('.section-heading:not(.collapsed)').forEach(h => {
+      expandedSections.push(h.dataset.section);
+    });
+    const animOpen = !document.getElementById('flow-collapse-bar').classList.contains('collapsed');
+    params.set('tab', currentTab);
+    params.set('risk', riskToggle);
+    params.set('fees', pricingToggle === 'stripe' ? 'ca' : 'platform');
+    params.set('revshare', revshareToggle);
+    if (expandedSections.length > 0) params.set('sections', expandedSections.join(','));
+    else params.delete('sections');
+    if (!animOpen) params.set('anim', 'closed');
+    else params.delete('anim');
+    if (document.getElementById('ledger-toggle').classList.contains('expanded')) params.set('ledger', 'open');
+    else params.delete('ledger');
+    if (showExplanations) params.set('explain', 'open');
+    else params.delete('explain');
+  });
+}
+
 function readHash() {
-  const hash = window.location.hash.slice(1);
-  if (!hash) return;
-  const params = new URLSearchParams(hash);
+  if (!window.location.hash.slice(1)) return;
+  const params = readHashParams();
 
   if (params.has('tab')) {
     currentTab = params.get('tab');
@@ -2547,23 +2557,19 @@ function applyLabels() {
 }
 
 function labelsToHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
-  let hasCustom = false;
-  Object.keys(LABEL_DEFAULTS).forEach(key => {
-    if (labelState[key] !== LABEL_DEFAULTS[key]) {
-      params.set('l_' + key, labelState[key]);
-      hasCustom = true;
-    } else {
-      params.delete('l_' + key);
-    }
+  mutateHash(params => {
+    Object.keys(LABEL_DEFAULTS).forEach(key => {
+      if (labelState[key] !== LABEL_DEFAULTS[key]) {
+        params.set('l_' + key, labelState[key]);
+      } else {
+        params.delete('l_' + key);
+      }
+    });
   });
-  window.history.replaceState(null, '', '#' + params.toString());
 }
 
 function labelsFromHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
+  const params = readHashParams();
   Object.keys(LABEL_DEFAULTS).forEach(key => {
     if (params.has('l_' + key)) {
       labelState[key] = params.get('l_' + key);
@@ -2605,21 +2611,19 @@ function readAmountInputs() {
 }
 
 function amountsToHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
-  Object.keys(AMOUNT_DEFAULTS).forEach(key => {
-    if (amountState[key] !== AMOUNT_DEFAULTS[key]) {
-      params.set('a_' + key, amountState[key]);
-    } else {
-      params.delete('a_' + key);
-    }
+  mutateHash(params => {
+    Object.keys(AMOUNT_DEFAULTS).forEach(key => {
+      if (amountState[key] !== AMOUNT_DEFAULTS[key]) {
+        params.set('a_' + key, amountState[key]);
+      } else {
+        params.delete('a_' + key);
+      }
+    });
   });
-  window.history.replaceState(null, '', '#' + params.toString());
 }
 
 function amountsFromHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
+  const params = readHashParams();
   Object.keys(AMOUNT_DEFAULTS).forEach(key => {
     if (params.has('a_' + key)) {
       const val = parseFloat(params.get('a_' + key));
@@ -2681,15 +2685,13 @@ function roundMoney(n) {
 }
 
 function currencyToHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
-  if (currencyState !== CURRENCY_DEFAULT) params.set('cur', currencyState);
-  else params.delete('cur');
-  window.history.replaceState(null, '', '#' + params.toString());
+  mutateHash(params => {
+    if (currencyState !== CURRENCY_DEFAULT) params.set('cur', currencyState);
+    else params.delete('cur');
+  });
 }
 function currencyFromHash() {
-  const hash = window.location.hash.slice(1);
-  const params = new URLSearchParams(hash);
+  const params = readHashParams();
   if (params.has('cur') && CURRENCIES.some(c => c.id === params.get('cur'))) {
     currencyState = params.get('cur');
   }

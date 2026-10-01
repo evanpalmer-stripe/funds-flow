@@ -131,6 +131,24 @@ h1 {
   position: relative;
 }
 
+/* Sliding white knob behind the two buttons; left by default, slides right via .pos-right. */
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc(50% - 3px);
+  background: var(--white);
+  border-radius: 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.toggle-pills.pos-right .toggle-thumb {
+  transform: translateX(100%);
+}
+
 .toggle-pill {
   padding: 6px 12px;
   border-radius: 18px;
@@ -138,7 +156,7 @@ h1 {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
   color: var(--dark-gray);
   text-align: center;
@@ -147,9 +165,7 @@ h1 {
 }
 
 .toggle-pill.active {
-  background: var(--white);
   color: var(--slate);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
 }
 
 .toggle-pill.disabled {
@@ -1081,6 +1097,7 @@ h1 {
     <div class="toggle-group">
       <span class="toggle-label">Risk</span>
       <div class="toggle-pills">
+        <div class="toggle-thumb"></div>
         <button class="toggle-pill active" data-toggle="risk" data-value="stripe">Stripe</button>
         <button class="toggle-pill" data-toggle="risk" data-value="platform">Platform</button>
       </div>
@@ -1088,6 +1105,7 @@ h1 {
     <div class="toggle-group">
       <span class="toggle-label">Fees paid by</span>
       <div class="toggle-pills">
+        <div class="toggle-thumb"></div>
         <button class="toggle-pill active" data-toggle="pricing" data-value="stripe">Connected Account</button>
         <button class="toggle-pill" data-toggle="pricing" data-value="platform">Platform</button>
       </div>
@@ -1095,6 +1113,7 @@ h1 {
     <div class="toggle-group">
       <span class="toggle-label">Rev share</span>
       <div class="toggle-pills">
+        <div class="toggle-thumb"></div>
         <button class="toggle-pill active" data-toggle="revshare" data-value="yes">Yes</button>
         <button class="toggle-pill" data-toggle="revshare" data-value="no">No</button>
       </div>
@@ -1619,6 +1638,17 @@ function applyCustomLabels(text) {
     .replace(/Platform/g, labelState.platform);
 }
 
+// Render a single swimlane indicator pill: set its (label-substituted) text, style
+// class, and column position. No-op if the pill isn't in the DOM for this tab.
+function renderPill(key, entry) {
+  const pill = document.querySelector(`.indicator[data-key="${key}"]`);
+  if (!pill) return;
+  pill.querySelector('.indicator-text').textContent = applyCustomLabels(entry.text);
+  pill.className = `indicator ${entry.style}`;
+  fitPillToColumn(pill);
+  centerPillInColumn(pill, entry.col);
+}
+
 function renderAll() {
   // Enforce valid toggle states BEFORE rendering anything
   enforceToggleValidity();
@@ -1627,59 +1657,27 @@ function renderAll() {
   const riskData = RISK_ROWS[riskToggle];
   const pricingData = PRICING_ROWS[pricingToggle];
 
-  // Render static rows
+  // Render static rows (skip the note key, which isn't a pill)
   Object.keys(staticData).forEach(key => {
     if (key === 'note') return;
-    const pill = document.querySelector(`.indicator[data-key="${key}"]`);
-    if (!pill) return;
-    const entry = staticData[key];
-    pill.querySelector('.indicator-text').textContent = applyCustomLabels(entry.text);
-    pill.className = `indicator ${entry.style}`;
-    fitPillToColumn(pill);
-    centerPillInColumn(pill, entry.col);
+    renderPill(key, staticData[key]);
   });
 
   // Render risk rows
-  Object.keys(riskData).forEach(key => {
-    const pill = document.querySelector(`.indicator[data-key="${key}"]`);
-    if (!pill) return;
-    const entry = riskData[key];
-    pill.querySelector('.indicator-text').textContent = applyCustomLabels(entry.text);
-    pill.className = `indicator ${entry.style}`;
-    fitPillToColumn(pill);
-    centerPillInColumn(pill, entry.col);
-  });
+  Object.keys(riskData).forEach(key => renderPill(key, riskData[key]));
 
   // Render pricing row
-  Object.keys(pricingData).forEach(key => {
-    const pill = document.querySelector(`.indicator[data-key="${key}"]`);
-    if (!pill) return;
-    const entry = pricingData[key];
-    pill.querySelector('.indicator-text').textContent = applyCustomLabels(entry.text);
-    pill.className = `indicator ${entry.style}`;
-    fitPillToColumn(pill);
-    centerPillInColumn(pill, entry.col);
-  });
+  Object.keys(pricingData).forEach(key => renderPill(key, pricingData[key]));
 
   // Render revenue row (pill 1 — merchant-funded)
   const revenueData = REVENUE_ROWS[currentTab];
-  const revenuePill = document.querySelector('.indicator[data-key="revenue"]');
-  if (revenuePill && revenueData) {
-    const entry = revenueData.revenue;
-    revenuePill.querySelector('.indicator-text').textContent = applyCustomLabels(entry.text);
-    revenuePill.className = `indicator ${entry.style}`;
-    fitPillToColumn(revenuePill);
-    centerPillInColumn(revenuePill, entry.col);
-  }
+  if (revenueData) renderPill('revenue', revenueData.revenue);
 
   // Render rev share pill (pill 2 — Stripe-funded, toggle-dependent)
   const revsharePill = document.querySelector('.indicator[data-key="revshare"]');
   if (revsharePill) {
     if (isRevshareAllowed() && revshareToggle === 'yes') {
-      revsharePill.querySelector('.indicator-text').textContent = REVSHARE_DATA.text;
-      revsharePill.className = `indicator ${REVSHARE_DATA.style}`;
-      fitPillToColumn(revsharePill);
-      centerPillInColumn(revsharePill, REVSHARE_DATA.col);
+      renderPill('revshare', REVSHARE_DATA);
     } else {
       revsharePill.className = 'indicator hidden';
       revsharePill.style.left = '';
@@ -1722,9 +1720,11 @@ function renderAll() {
 
 function updateToggleUI(group) {
   const value = group === 'risk' ? riskToggle : group === 'pricing' ? pricingToggle : revshareToggle;
-  document.querySelectorAll(`[data-toggle="${group}"]`).forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === value);
-  });
+  const btns = [...document.querySelectorAll(`[data-toggle="${group}"]`)];
+  btns.forEach(btn => btn.classList.toggle('active', btn.dataset.value === value));
+  // Slide the thumb to the active option (second button = right position).
+  const activeIndex = btns.findIndex(btn => btn.dataset.value === value);
+  btns[0].closest('.toggle-pills').classList.toggle('pos-right', activeIndex === 1);
 }
 
 // Tab clicks
@@ -2125,10 +2125,6 @@ function resetBalances() {
   if (verify) verify.textContent = '';
 }
 
-function formatAmount(n) {
-  return fmtCurSigned(n);
-}
-
 function addLedgerEntry(step) {
   let caAmt = 0, platAmt = 0;
   if (step.to === 'ca' || step.to === 'ca2') caAmt += step.amount;
@@ -2143,12 +2139,12 @@ function addLedgerEntry(step) {
   // Render
   const body = document.getElementById('ledger-body');
   const row = document.createElement('tr');
-  row.innerHTML = `<td>${step.label}</td><td>${formatAmount(caAmt)}</td><td>${formatAmount(platAmt)}</td>`;
+  row.innerHTML = `<td>${step.label}</td><td>${fmtCurSigned(caAmt)}</td><td>${fmtCurSigned(platAmt)}</td>`;
   body.appendChild(row);
 
   // Update footer
   const foot = document.getElementById('ledger-foot');
-  foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${formatAmount(caNet)}</td><td>${formatAmount(platformNet)}</td></tr>`;
+  foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${fmtCurSigned(caNet)}</td><td>${fmtCurSigned(platformNet)}</td></tr>`;
 
   // Verification
   const verify = document.getElementById('ledger-verify');
@@ -2521,6 +2517,25 @@ const LABEL_DEFAULTS = {
 
 const labelState = { ...LABEL_DEFAULTS };
 
+const LABEL_INPUTS = {
+  customer: 'label-customer',
+  ca: 'label-ca',
+  platform: 'label-platform',
+  ca2: 'label-ca2'
+};
+
+function populateLabelInputs() {
+  Object.keys(LABEL_INPUTS).forEach(key => {
+    document.getElementById(LABEL_INPUTS[key]).value = labelState[key];
+  });
+}
+
+function readLabelInputs() {
+  Object.keys(LABEL_INPUTS).forEach(key => {
+    labelState[key] = document.getElementById(LABEL_INPUTS[key]).value.trim() || LABEL_DEFAULTS[key];
+  });
+}
+
 function applyLabels() {
   document.querySelector('#entity-customer .flow-entity-label').textContent = labelState.customer;
   document.querySelector('#entity-ca span:first-child').textContent = labelState.ca;
@@ -2650,13 +2665,6 @@ function curNumberFormat(opts) {
 function curDecimals() {
   return curNumberFormat().resolvedOptions().maximumFractionDigits;
 }
-// The bare currency symbol and whether it sits after the number (suffix) for this locale.
-function curSymbolInfo() {
-  const parts = curNumberFormat().formatToParts(0);
-  const ci = parts.findIndex(p => p.type === 'currency');
-  const ni = parts.findIndex(p => p.type === 'integer');
-  return { symbol: ci >= 0 ? parts[ci].value : '', suffix: ci > ni };
-}
 // Plain formatted value (keeps a natural minus sign for negatives). Balances, verify line.
 function fmtCur(n) {
   return curNumberFormat().format(n);
@@ -2736,24 +2744,27 @@ function syncCurrencyUI() {
   });
 }
 
-// Modal controls
-const overlay = document.getElementById('settings-overlay');
+// Shared modal wiring: .visible toggles display; clicking the dimmed backdrop closes.
+function makeModal(overlayId) {
+  const overlay = document.getElementById(overlayId);
+  const open = () => overlay.classList.add('visible');
+  const close = () => overlay.classList.remove('visible');
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  return { overlay, open, close };
+}
+
+// Settings modal
+const settingsModal = makeModal('settings-overlay');
 document.getElementById('settings-cog').addEventListener('click', () => {
-  document.getElementById('label-customer').value = labelState.customer;
-  document.getElementById('label-ca').value = labelState.ca;
-  document.getElementById('label-platform').value = labelState.platform;
-  document.getElementById('label-ca2').value = labelState.ca2;
+  populateLabelInputs();
   curDraft = currencyState;
   syncCurrencyUI();
   populateAmountInputs();
-  overlay.classList.add('visible');
+  settingsModal.open();
 });
 
 document.getElementById('settings-done').addEventListener('click', () => {
-  labelState.customer = document.getElementById('label-customer').value.trim() || LABEL_DEFAULTS.customer;
-  labelState.ca = document.getElementById('label-ca').value.trim() || LABEL_DEFAULTS.ca;
-  labelState.platform = document.getElementById('label-platform').value.trim() || LABEL_DEFAULTS.platform;
-  labelState.ca2 = document.getElementById('label-ca2').value.trim() || LABEL_DEFAULTS.ca2;
+  readLabelInputs();
   currencyState = curDraft; // commit currency before reading amounts so rounding uses its decimals
   readAmountInputs();
   applyLabels();
@@ -2761,16 +2772,13 @@ document.getElementById('settings-done').addEventListener('click', () => {
   amountsToHash();
   currencyToHash();
   closeCurMenu();
-  overlay.classList.remove('visible');
+  settingsModal.close();
   restartFlow();
 });
 
 document.getElementById('settings-reset').addEventListener('click', () => {
   Object.assign(labelState, LABEL_DEFAULTS);
-  document.getElementById('label-customer').value = LABEL_DEFAULTS.customer;
-  document.getElementById('label-ca').value = LABEL_DEFAULTS.ca;
-  document.getElementById('label-platform').value = LABEL_DEFAULTS.platform;
-  document.getElementById('label-ca2').value = LABEL_DEFAULTS.ca2;
+  populateLabelInputs();
   currencyState = CURRENCY_DEFAULT;
   curDraft = CURRENCY_DEFAULT;
   syncCurrencyUI();
@@ -2783,22 +2791,13 @@ document.getElementById('settings-reset').addEventListener('click', () => {
   restartFlow();
 });
 
-overlay.addEventListener('click', (e) => {
-  if (e.target === overlay) overlay.classList.remove('visible');
-});
-
-// About modal controls (mirrors settings modal)
-const aboutOverlay = document.getElementById('about-overlay');
+// About modal (same wiring)
+const aboutModal = makeModal('about-overlay');
 document.getElementById('about-link').addEventListener('click', (e) => {
   e.preventDefault();
-  aboutOverlay.classList.add('visible');
+  aboutModal.open();
 });
-document.getElementById('about-done').addEventListener('click', () => {
-  aboutOverlay.classList.remove('visible');
-});
-aboutOverlay.addEventListener('click', (e) => {
-  if (e.target === aboutOverlay) aboutOverlay.classList.remove('visible');
-});
+document.getElementById('about-done').addEventListener('click', () => aboutModal.close());
 
 // Read state from URL on load
 readHash();
@@ -2867,9 +2866,9 @@ function settleClone(root, ledgerTopMargin) {
 
   const body = root.querySelector('#ledger-body');
   if (body) body.innerHTML = rows.map(r =>
-    `<tr><td>${r.label}</td><td>${formatAmount(r.ca)}</td><td>${formatAmount(r.platform)}</td></tr>`).join('');
+    `<tr><td>${r.label}</td><td>${fmtCurSigned(r.ca)}</td><td>${fmtCurSigned(r.platform)}</td></tr>`).join('');
   const foot = root.querySelector('#ledger-foot');
-  if (foot) foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${formatAmount(caNetC)}</td><td>${formatAmount(platformNetC)}</td></tr>`;
+  if (foot) foot.innerHTML = `<tr class="ledger-net"><td>Net</td><td>${fmtCurSigned(caNetC)}</td><td>${fmtCurSigned(platformNetC)}</td></tr>`;
   const verify = root.querySelector('#ledger-verify');
   if (verify) { const payment = getAmounts().payment; const stripeNet = payment - caNetC - platformNetC; verify.textContent = `${fmtCur(caNetC)} + ${fmtCur(platformNetC)} + ${fmtCur(stripeNet)} (Stripe) = ${fmtCur(payment)}`; }
 
